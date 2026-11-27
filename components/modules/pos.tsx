@@ -1519,15 +1519,29 @@ export function PosModule() {
             <p className="display mt-2 text-3xl text-matcha-deep">
               {money(success.total, currency)}
             </p>
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <Button variant="ghost" onClick={() => setSuccess(null)}>
+            {/* Botones grandes para seguir rápido: «Nueva venta» es lo más
+                común, así que va primero, relleno y con el foco listo para
+                Enter. */}
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setSuccess(null)}
+                className="focus-ring flex h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-gradient-to-r from-matcha-deep to-matcha text-lg font-extrabold text-paper shadow-pop transition hover:brightness-110 active:scale-[0.98] motion-reduce:transition-none"
+              >
+                <span aria-hidden className="text-2xl leading-none">
+                  ＋
+                </span>
                 Nueva venta
-              </Button>
+              </button>
               <Link
                 href="/comandas"
-                className="focus-ring inline-flex items-center justify-center gap-2 rounded-full bg-matcha-deep px-5 py-2.5 text-sm font-bold text-paper shadow-pop transition hover:bg-matcha"
                 onClick={() => notify("Comanda enviada a barra")}
+                className="focus-ring flex h-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-line bg-white text-lg font-extrabold text-ink transition hover:border-matcha active:scale-[0.98] motion-reduce:transition-none"
               >
+                <span aria-hidden className="text-2xl leading-none">
+                  🧾
+                </span>
                 Ver comanda
               </Link>
             </div>
