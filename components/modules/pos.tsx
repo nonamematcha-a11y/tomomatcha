@@ -475,16 +475,96 @@ export function PosModule() {
     </div>
   );
 
+  /* Fila compacta de porcentaje: chips + campo libre, para descuento y propina. */
+  const pctRow = (opts: {
+    label: string;
+    chips: { pct: number; text: string }[];
+    active: (pct: number) => boolean;
+    onChip: (pct: number) => void;
+    custom: string;
+    onCustom: (text: string) => void;
+    aria: string;
+  }) => (
+    <div>
+      <p className="eyebrow">{opts.label}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {opts.chips.map((c) => (
+          <Chip key={c.pct} active={opts.active(c.pct)} onClick={() => opts.onChip(c.pct)}>
+            {c.text}
+          </Chip>
+        ))}
+        <Input
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          aria-label={opts.aria}
+          placeholder="Otro %"
+          value={opts.custom}
+          onChange={(e) => {
+            const text = numericText(e.target.value);
+            if (text !== null) opts.onCustom(text);
+          }}
+          className="!w-24 rounded-full !py-2 text-center"
+        />
+      </div>
+    </div>
+  );
+
+  /* Desglose del ticket final: subtotal, descuento, propina y total. */
+  const ticketTotals = (
+    <div className="space-y-1.5 border-t border-line pt-4">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted">
+          Subtotal · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
+        </span>
+        <span className="font-bold text-ink">{money(subtotal, currency)}</span>
+      </div>
+      {discountAmount > 0 ? (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted">Descuento · {discountLabel}</span>
+          <span className="font-bold text-matcha-deep">
+            −{money(discountAmount, currency)}
+          </span>
+        </div>
+      ) : null}
+      {tip > 0 ? (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted">Propina · {pctLabel(tipPctApplied)}%</span>
+          <span className="font-bold text-ink">+{money(tip, currency)}</span>
+        </div>
+      ) : null}
+      <div className="flex items-baseline justify-between pt-1">
+        <span className="text-sm font-extrabold text-ink">Total</span>
+        <span className="display text-2xl text-ink">{money(total, currency)}</span>
+      </div>
+    </div>
+  );
+
+  /*
+   * Pantalla de cobro, al estilo Loyverse: el total en grande arriba y abajo
+   * los controles en filas compactas, con los métodos de pago como botones
+   * grandes para tocarlos rápido en el iPad.
+   */
   const payBody = (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <div className="rounded-xl2 bg-ink px-5 py-4 text-center text-paper">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-paper/60">
+          Total a cobrar
+        </p>
+        <p className="display mt-1 text-5xl leading-none">{money(total, currency)}</p>
+        {discountAmount > 0 || tip > 0 ? (
+          <p className="mt-2 text-xs text-paper/60">
+            {discountAmount > 0 ? `Descuento −${money(discountAmount, currency)}` : ""}
+            {discountAmount > 0 && tip > 0 ? " · " : ""}
+            {tip > 0 ? `Propina +${money(tip, currency)}` : ""}
+          </p>
+        ) : null}
+      </div>
+
       {/* ------------------------- Aquí o para llevar ------------------------- */}
       <div>
         <p className="eyebrow">¿Dónde se consume?</p>
-        <div
-          className="mt-2 grid grid-cols-2 gap-2"
-          role="group"
-          aria-label="Modo de servicio"
-        >
+        <div className="mt-2 grid grid-cols-2 gap-2" role="group" aria-label="Modo de servicio">
           {(["aqui", "llevar"] as ServiceMode[]).map((mode) => {
             const selected = serviceMode === mode;
             return (
@@ -515,42 +595,41 @@ export function PosModule() {
         ) : null}
       </div>
 
-      {/* ------------------------------- Promos -------------------------------- */}
-      <div className="border-t border-line pt-4">
-        <p className="eyebrow">Promoción</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {PROMOS.map((promo) => (
-            <Chip
-              key={promo.pct}
-              active={!discountTyped && promoPct === promo.pct}
-              onClick={() => {
-                setPromoPct(promo.pct);
-                setDiscountCustomPct("");
-              }}
-            >
-              {promo.label}
-            </Chip>
-          ))}
-        </div>
-        <Input
-          type="text"
-          inputMode="decimal"
-          autoComplete="off"
-          aria-label="Otro porcentaje de descuento"
-          placeholder="Otro descuento (%)"
-          value={discountCustomPct}
-          onChange={(e) => {
-            const text = numericText(e.target.value);
-            if (text !== null) setDiscountCustomPct(text);
-          }}
-          className="mt-2 rounded-full"
-        />
-        {discountOverflow ? (
-          <p className="mt-1.5 text-xs font-bold text-danger">
-            El descuento no puede pasar de 100%; se aplica 100%.
-          </p>
-        ) : null}
-      </div>
+      {pctRow({
+        label: "Descuento",
+        chips: PROMOS.map((p) => ({ pct: p.pct, text: p.pct === 0 ? "Sin descuento" : `${p.pct}%` })),
+        active: (pct) => !discountTyped && promoPct === pct,
+        onChip: (pct) => {
+          setPromoPct(pct);
+          setDiscountCustomPct("");
+        },
+        custom: discountCustomPct,
+        onCustom: setDiscountCustomPct,
+        aria: "Otro porcentaje de descuento",
+      })}
+      {discountOverflow ? (
+        <p className="-mt-3 text-xs font-bold text-danger">
+          El descuento no puede pasar de 100%; se aplica 100%.
+        </p>
+      ) : null}
+
+      {pctRow({
+        label: "Propina",
+        chips: [{ pct: 0, text: "Sin propina" }, ...TIP_PCTS.map((pct) => ({ pct, text: `${pct}%` }))],
+        active: (pct) => !tipTyped && tipPct === pct,
+        onChip: (pct) => {
+          setTipPct(pct);
+          setTipCustomPct("");
+        },
+        custom: tipCustomPct,
+        onCustom: setTipCustomPct,
+        aria: "Otro porcentaje de propina",
+      })}
+      {tipOverflow ? (
+        <p className="-mt-3 text-xs font-extrabold text-danger">
+          La propina no puede pasar del 100% del consumo.
+        </p>
+      ) : null}
 
       {/* ------------------------------- Lealtad -------------------------------- */}
       {SHOW_LEALTAD_UI && state.flags.lealtad ? (
@@ -593,90 +672,10 @@ export function PosModule() {
         </div>
       ) : null}
 
-      {/* ------------------------------- Totales -------------------------------- */}
-      <div className="space-y-1.5 border-t border-line pt-4">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted">Subtotal</span>
-          <span className="font-bold text-ink">{money(subtotal, currency)}</span>
-        </div>
-        {discountAmount > 0 ? (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted">Descuento · {discountLabel}</span>
-            <span className="font-bold text-matcha-deep">
-              −{money(discountAmount, currency)}
-            </span>
-          </div>
-        ) : null}
-        {tip > 0 ? (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted">
-              Propina · {pctLabel(tipPctApplied)}%
-            </span>
-            <span className="font-bold text-ink">+{money(tip, currency)}</span>
-          </div>
-        ) : null}
-        <div className="flex items-baseline justify-between pt-1">
-          <span className="text-sm font-extrabold text-ink">Total</span>
-          <span className="display text-2xl text-ink">
-            {money(total, currency)}
-          </span>
-        </div>
-      </div>
-
-      {/* -------------------------------- Propina -------------------------------- */}
-      <div className="border-t border-line pt-4">
-        <p className="eyebrow">Propina</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Chip
-            active={!tipTyped && tipPct === 0}
-            onClick={() => {
-              setTipPct(0);
-              setTipCustomPct("");
-            }}
-          >
-            Sin propina
-          </Chip>
-          {TIP_PCTS.map((pct) => (
-            <Chip
-              key={pct}
-              active={!tipTyped && tipPct === pct}
-              onClick={() => {
-                setTipPct(pct);
-                setTipCustomPct("");
-              }}
-            >
-              {pct}%
-            </Chip>
-          ))}
-        </div>
-        <Input
-          type="text"
-          inputMode="decimal"
-          autoComplete="off"
-          aria-label="Otro porcentaje de propina"
-          placeholder="Otro porcentaje (%)"
-          value={tipCustomPct}
-          onChange={(e) => {
-            const text = numericText(e.target.value);
-            if (text !== null) setTipCustomPct(text);
-          }}
-          className="mt-2 rounded-full"
-        />
-        {tipOverflow ? (
-          <p className="mt-1.5 text-xs font-extrabold text-danger">
-            La propina no puede pasar del 100% del consumo.
-          </p>
-        ) : tip > 0 ? (
-          <p className="mt-1.5 text-xs font-extrabold text-matcha-deep">
-            Propina {pctLabel(tipPctApplied)}%: {money(tip, currency)}
-          </p>
-        ) : null}
-      </div>
-
       {/* --------------------------------- Pago ---------------------------------- */}
-      <div className="border-t border-line pt-4">
+      <div>
         <p className="eyebrow">Método de pago</p>
-        <div className="mt-2 space-y-2">
+        <div className={cx("mt-2 grid gap-2", paymentOptions.length > 2 ? "grid-cols-3" : "grid-cols-2")}>
           {paymentOptions.map((opt) => {
             const selected = activePayment === opt.id;
             return (
@@ -686,21 +685,14 @@ export function PosModule() {
                 onClick={() => setPayment(opt.id)}
                 aria-pressed={selected}
                 className={cx(
-                  "focus-ring flex w-full items-center justify-between gap-3 rounded-xl2 border px-4 py-2.5 text-sm font-bold transition",
+                  "focus-ring flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl2 border px-2 py-3 text-sm font-extrabold transition",
                   selected
-                    ? "border-matcha bg-matcha-mist text-ink"
+                    ? "border-matcha bg-matcha-mist text-ink ring-2 ring-matcha"
                     : "border-line bg-white text-ink hover:border-matcha",
                 )}
               >
-                <span className="flex items-center gap-2.5">
-                  <span aria-hidden>{opt.emoji}</span>
-                  {PAYMENT_META[opt.id].label}
-                </span>
-                {selected ? (
-                  <span className="text-xs font-extrabold text-matcha-deep">
-                    ✓ Elegido
-                  </span>
-                ) : null}
+                <span aria-hidden className="text-2xl">{opt.emoji}</span>
+                {PAYMENT_META[opt.id].label}
               </button>
             );
           })}
@@ -708,46 +700,40 @@ export function PosModule() {
 
         {activePayment === "efectivo" ? (
           <div className="mt-3 space-y-2">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Chip
                 active={cashReceived !== "" && received === total}
                 onClick={() => setCashReceived(String(total))}
               >
                 Exacto
               </Chip>
-              <Chip
-                active={cashReceived === "200"}
-                onClick={() => setCashReceived("200")}
-              >
+              <Chip active={cashReceived === "200"} onClick={() => setCashReceived("200")}>
                 {money(200, currency)}
               </Chip>
-              <Chip
-                active={cashReceived === "500"}
-                onClick={() => setCashReceived("500")}
-              >
+              <Chip active={cashReceived === "500"} onClick={() => setCashReceived("500")}>
                 {money(500, currency)}
               </Chip>
+              <Input
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                aria-label="Efectivo recibido"
+                placeholder="Recibido"
+                value={cashReceived}
+                onChange={(e) => {
+                  const text = numericText(e.target.value);
+                  if (text !== null) setCashReceived(text);
+                }}
+                className="!w-32 rounded-full !py-2"
+              />
             </div>
-            <Input
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              aria-label="Efectivo recibido"
-              placeholder="Efectivo recibido"
-              value={cashReceived}
-              onChange={(e) => {
-                const text = numericText(e.target.value);
-                if (text !== null) setCashReceived(text);
-              }}
-              className="rounded-full"
-            />
-            {cart.length ? (
+            {cart.length && cashReceived !== "" ? (
               cashOk ? (
-                <p className="text-xs font-extrabold text-matcha-deep">
+                <p className="text-sm font-extrabold text-matcha-deep">
                   Cambio: {money(Math.round((received - total) * 100) / 100, currency)}
                 </p>
               ) : (
-                <p className="text-xs font-extrabold text-danger">
+                <p className="text-sm font-extrabold text-danger">
                   Faltan {money(Math.round((total - received) * 100) / 100, currency)}
                 </p>
               )
@@ -759,7 +745,7 @@ export function PosModule() {
       <Button
         variant="matcha"
         size="lg"
-        className="w-full"
+        className="w-full py-4 text-base"
         disabled={!canCharge}
         onClick={() => void handleCheckout()}
       >
@@ -808,7 +794,7 @@ export function PosModule() {
   }
 
   return (
-    <div className="space-y-6 pb-10 xl:pb-0">
+    <div className="space-y-6 pb-10 md:pb-0">
       <PageHeader
         eyebrow={cashClosedToday ? "Caja cerrada" : "Caja abierta"}
         title="Punto de venta"
@@ -885,8 +871,8 @@ export function PosModule() {
 
       {phase === "cobro" ? (
         /* ----------------------- Fase 2: ticket final y pago ----------------------- */
-        <div className="gap-5 space-y-5 lg:grid lg:grid-cols-[1fr_400px] lg:space-y-0">
-          <div className="min-w-0 self-start lg:sticky lg:top-24">
+        <div className="gap-5 space-y-5 md:grid md:grid-cols-[1fr_minmax(340px,440px)] md:space-y-0">
+          <div className="min-w-0 self-start md:sticky md:top-24">
             <Card>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="display text-2xl text-ink">Ticket final</h2>
@@ -895,24 +881,16 @@ export function PosModule() {
                 </Button>
               </div>
               {cartList(false)}
-              <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-sm">
-                <span className="text-muted">
-                  Subtotal · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
-                </span>
-                <span className="font-extrabold text-ink">
-                  {money(subtotal, currency)}
-                </span>
-              </div>
+              <div className="mt-4">{ticketTotals}</div>
             </Card>
           </div>
           <Card className="self-start">
-            <h2 className="display mb-4 text-2xl text-ink">Cobro</h2>
             {payBody}
           </Card>
         </div>
       ) : (
         <>
-      <div className="gap-5 xl:grid xl:grid-cols-[1fr_360px]">
+      <div className="gap-5 md:grid md:grid-cols-[1fr_300px] xl:grid-cols-[1fr_360px]">
         {/* -------------------------------- Catálogo ------------------------------ */}
         <div className="min-w-0 space-y-4">
           <Input
@@ -957,7 +935,7 @@ export function PosModule() {
           </div>
 
           {visibleProducts.length ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {visibleProducts.map((p) => (
                 <button
                   key={p.id}
@@ -1004,8 +982,8 @@ export function PosModule() {
         </div>
 
         {/* --------------------------- Ticket (escritorio) ------------------------- */}
-        <div className="hidden self-start xl:sticky xl:top-24 xl:block">
-          <Card>
+        <div className="hidden self-start md:sticky md:top-24 md:block">
+          <Card className="scrollbar-slim max-h-[calc(100dvh-8rem)] overflow-y-auto">
             <h2 className="display mb-4 text-2xl text-ink">Orden</h2>
             {orderBody}
           </Card>
@@ -1017,7 +995,7 @@ export function PosModule() {
         <button
           type="button"
           onClick={() => setMobileTicketOpen(true)}
-          className="focus-ring animate-rise fixed inset-x-4 bottom-16 z-30 flex items-center justify-between gap-3 rounded-full bg-ink px-5 py-3.5 text-paper shadow-lift lg:bottom-6 lg:left-[274px] xl:hidden"
+          className="focus-ring animate-rise fixed inset-x-4 bottom-16 z-30 flex items-center justify-between gap-3 rounded-full bg-ink px-5 py-3.5 text-paper shadow-lift md:hidden"
         >
           <span className="text-sm font-extrabold">
             🧾 Orden · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}

@@ -32,7 +32,7 @@ Convenciones:
 **Cuatro cosas que el sistema hace solo cada vez que se cobra:** crea la comanda con su folio, descuenta los insumos según la receta del producto (si Inventario está encendido), separa la propina del consumo y actualiza el resumen, los reportes y el corte de caja.
 
 **Lo que más se pregunta y su respuesta corta:**
-- «No me deja cobrar»: casi siempre es una de estas cuatro cosas: (1) la caja del día ya está cerrada (corte hecho), (2) el pago es en efectivo y falta capturar «Efectivo recibido» o tocar «Exacto», (3) el ticket está vacío, (4) la propina escrita pasa del 100 %. Ver sección 6 (lista de revisión).
+- «No me deja cobrar»: casi siempre es una de estas cuatro cosas: (1) la caja del día ya está cerrada (corte hecho), (2) el pago es en efectivo y falta capturar «Recibido» o tocar «Exacto», (3) el ticket está vacío, (4) la propina escrita pasa del 100 %. Ver sección 6 (lista de revisión).
 - «No puedo entrar a un módulo»: sale un candado 🔒 porque ese módulo es solo para administradores. Un administrador puede cambiar el rol en Ajustes → Equipo.
 - «Cobré mal»: un administrador cancela el ticket (Comandas o Administración de pedidos) mientras el corte de ese día no esté hecho.
 - «Se me olvidó registrar un día»: el sistema no permite registrar ventas ni cortes de fechas pasadas. Ver sección 18.1.
@@ -142,7 +142,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 - Cabecera: «Caja abierta» o «Caja cerrada» y el título «Punto de venta».
 - A la izquierda el catálogo: buscador «Buscar producto…» (busca en el nombre y en la descripción) y chips de categoría: «Todos» y las categorías del menú (solo aparecen las categorías activas que tienen algún producto activo).
 - El cobro va en **dos fases**, marcadas arriba: **1 Orden** y **2 Ticket final y pago**. Se puede volver de la 2 a la 1 con «← Editar orden» o tocando «1 Orden».
-- En la fase 1, a la derecha (en computadora ancha) está la **Orden** con cada producto, su precio y el subtotal. En tablet y celular la orden se abre desde la barra inferior «🧾 Orden · N artículos».
+- En la fase 1 la **Orden** está fija a la derecha (computadora y tablet) con cada producto, su precio y el subtotal; si es larga se desplaza dentro de su recuadro. En celular la orden se abre desde la barra inferior «🧾 Orden · N artículos».
 - Solo se muestran los productos activos. Si la carta está vacía aparece «La carta está vacía»: el administrador debe crear productos en Productos o cargar el catálogo sugerido desde Ajustes; el empleado debe pedírselo a un administrador.
 - Si el corte de hoy ya se hizo aparece «Ventas en pausa: el corte de hoy ya se registró» (con «Ir a Corte de caja» para el administrador) y el botón de cobrar queda bloqueado.
 
@@ -161,18 +161,18 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 5. Pulsa **«Continuar al cobro →»**.
 
 **Fase 2 · Ticket final y pago**
-- A la izquierda queda el ticket final (solo lectura; para cambiarlo, «← Editar orden»). A la derecha, el cobro:
+- A la izquierda queda el ticket final (solo lectura; para cambiarlo, «← Editar orden») con subtotal, descuento, propina y total. A la derecha, el cobro: arriba el **total a cobrar en grande** y debajo:
 1. **¿Dónde se consume?** Elige «Para aquí» o «Para llevar». Ver 5.4: no es un detalle estético.
-2. **Promoción** (opcional): «Sin promoción», «Descuento 10%» o «Cliente frecuente 15%», o escribe cualquier porcentaje en «Otro descuento (%)». Lo escrito manda sobre la promoción; al tocar una promoción el campo se vacía. Si pasa de 100 % se aplica 100 % y lo avisa.
-3. **Propina**: «Sin propina» (viene así por omisión), 10 %, 15 %, 20 %, o escribe otro porcentaje en «Otro porcentaje (%)».
-4. **Método de pago**: «Efectivo», «Tarjeta» y, solo si el módulo está encendido en Ajustes, «Mercado Pago».
-5. Si es **Efectivo**: escribe en «Efectivo recibido» lo que entregó el cliente, o toca «Exacto», «$200» o «$500». El sistema muestra «Cambio: $X». Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
+2. **Descuento** (opcional): «Sin descuento», «10%» o «15%», o escribe cualquier porcentaje en «Otro %». Lo escrito manda sobre los botones; al tocar un botón el campo se vacía. Si pasa de 100 % se aplica 100 % y lo avisa. En el ticket el 10 % se registra como «Descuento 10%» y el 15 % como «Cliente frecuente 15%».
+3. **Propina**: «Sin propina» (viene así por omisión), 10 %, 15 %, 20 %, o escribe otro porcentaje en «Otro %».
+4. **Método de pago**: botones grandes «Efectivo», «Tarjeta» y, solo si el módulo está encendido en Ajustes, «Mercado Pago».
+5. Si es **Efectivo**: escribe en «Recibido» lo que entregó el cliente, o toca «Exacto», «$200» o «$500». El sistema muestra «Cambio: $X». Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
 6. Pulsa **«Cobrar $X»**. Aparece «Cobro completado» con «Venta #N registrada» y el total, con los botones «Nueva venta» y «Ver comanda». La caja vuelve sola a la fase 1.
 
 ### 5.3 Cómo se calcula el total
 - **Precio de una línea** = precio del producto + cargo de la leche elegida + precio de cada extra, por la cantidad.
 - **Subtotal** = suma de las líneas.
-- **Descuento** = el porcentaje de la promoción (o el escrito en «Otro descuento (%)») aplicado sobre el subtotal. Da el **consumo**.
+- **Descuento** = el porcentaje de la promoción (o el escrito en «Otro %») aplicado sobre el subtotal. Da el **consumo**.
 - **Propina** = el porcentaje elegido aplicado sobre el **consumo ya con descuento**. La promoción nunca le quita nada a la propina.
 - **Total** = consumo + propina. Es lo que se cobra.
 - La propina no puede pasar del 100 % del consumo. Si se escribe más, el sistema muestra «La propina no puede pasar del 100% del consumo.» y no deja cobrar.
@@ -220,7 +220,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 Revisar en este orden:
 1. **¿Hay una franja ámbar arriba que dice «La caja de hoy está cerrada»?** El corte de hoy ya se registró. Un administrador debe entrar a Corte de caja y pulsar «Reabrir turno». (Después habrá que hacer el corte otra vez.)
 2. **¿El ticket tiene productos?** Sin renglones el botón «Cobrar» está desactivado.
-3. **¿El pago es en efectivo?** El botón se activa hasta que «Efectivo recibido» sea igual o mayor que el total. Toca «Exacto» si el cliente pagó justo. Si dice «Faltan $X» en rojo, falta dinero o falta capturar el monto.
+3. **¿El pago es en efectivo?** El botón se activa hasta que «Recibido» sea igual o mayor que el total. Toca «Exacto» si el cliente pagó justo. Si dice «Faltan $X» en rojo, falta dinero o falta capturar el monto.
 4. **¿Escribiste un porcentaje de propina mayor a 100?** Corrige el porcentaje: el máximo es 100 %.
 5. **¿Aparece «Guardando…» / «Cobrando…»?** Hay otra acción en proceso; espera a que termine.
 6. **¿La lista de productos está vacía?** Faltan productos activos: administrador → Productos.
