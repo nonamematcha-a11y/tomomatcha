@@ -131,6 +131,8 @@ export function PosModule() {
   const [tipPct, setTipPct] = useState(0);
   const [tipCustomPct, setTipCustomPct] = useState("");
   const [mobileTicketOpen, setMobileTicketOpen] = useState(false);
+  // Fase del cobro: 1) armar la orden, 2) ticket final y pago.
+  const [phase, setPhase] = useState<"orden" | "cobro">("orden");
   const [success, setSuccess] = useState<{ folio: number; total: number } | null>(
     null,
   );
@@ -369,6 +371,7 @@ export function PosModule() {
     setTipPct(0);
     setTipCustomPct("");
     setMobileTicketOpen(false);
+    setPhase("orden");
     setSuccess({ folio: result.folio, total: chargedTotal });
   };
 
@@ -378,7 +381,101 @@ export function PosModule() {
     (i) => i.isPackaging && i.active,
   ).length;
 
-  const ticketBody = (
+  /*
+   * El cobro va en dos fases, como en Loyverse: primero se arma la ORDEN
+   * (productos, cantidades y precio de cada uno) y luego se pasa al TICKET
+   * FINAL, donde se eligen servicio, descuento, propina y método de pago. Así
+   * quien toma el pedido no se distrae con el cobro, y el cobro no se mezcla
+   * con el catálogo.
+   */
+  const cartList = (editable: boolean) => (
+    <>
+      {cart.length ? (
+        <ul className="space-y-2.5">
+          {cart.map((line) => {
+            const product = state.products.find((p) => p.id === line.productId);
+            if (!product) return null;
+            const summary = summaryFor(line);
+            return (
+              <li
+                key={line.key}
+                className="flex items-start gap-2 rounded-xl2 border border-line bg-paper px-3 py-2.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => (editable ? openLine(line) : undefined)}
+                  disabled={!editable}
+                  aria-label={`Editar ${product.name}`}
+                  className="focus-ring min-w-0 flex-1 rounded-lg text-left disabled:cursor-default"
+                >
+                  <span className="block break-words text-sm font-extrabold text-ink">
+                    {line.qty}× {product.name}
+                  </span>
+                  {summary ? (
+                    <span className="mt-0.5 block break-words text-xs text-muted">
+                      {summary}
+                    </span>
+                  ) : null}
+                  {line.modifiers.notes ? (
+                    <span className="mt-0.5 block break-words text-xs italic text-muted">
+                      {line.modifiers.notes}
+                    </span>
+                  ) : null}
+                </button>
+                <span className="shrink-0 pt-0.5 text-sm font-extrabold text-ink">
+                  {money(lineUnitPrice(line) * line.qty, currency)}
+                </span>
+                {editable ? (
+                  <button
+                    type="button"
+                    onClick={() => removeLine(line.key)}
+                    aria-label="Quitar"
+                    className="focus-ring -mr-1 shrink-0 rounded-full p-1 text-sm font-bold text-muted transition hover:bg-cream hover:text-danger"
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="rounded-xl2 border border-dashed border-line px-4 py-8 text-center text-sm leading-6 text-muted">
+          Elige productos del catálogo para armar la orden.
+        </p>
+      )}
+
+    </>
+  );
+
+  const orderBody = (
+    <div className="space-y-4">
+      {cartList(true)}
+
+      <div className="flex items-center justify-between border-t border-line pt-4 text-sm">
+        <span className="text-muted">
+          Subtotal · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
+        </span>
+        <span className="display text-2xl text-ink">
+          {money(subtotal, currency)}
+        </span>
+      </div>
+      <Button
+        variant="matcha"
+        size="lg"
+        className="w-full"
+        disabled={!cart.length}
+        onClick={() => {
+          setMobileTicketOpen(false);
+          setPhase("cobro");
+        }}
+      >
+        Continuar al cobro →
+      </Button>
+    </div>
+  );
+
+  const payBody = (
     <div className="space-y-4">
       {/* ------------------------- Aquí o para llevar ------------------------- */}
       <div>
@@ -417,58 +514,6 @@ export function PosModule() {
           </p>
         ) : null}
       </div>
-
-      {cart.length ? (
-        <ul className="space-y-2.5">
-          {cart.map((line) => {
-            const product = state.products.find((p) => p.id === line.productId);
-            if (!product) return null;
-            const summary = summaryFor(line);
-            return (
-              <li
-                key={line.key}
-                className="flex items-start gap-2 rounded-xl2 border border-line bg-paper px-3 py-2.5"
-              >
-                <button
-                  type="button"
-                  onClick={() => openLine(line)}
-                  aria-label={`Editar ${product.name}`}
-                  className="focus-ring min-w-0 flex-1 rounded-lg text-left"
-                >
-                  <span className="block break-words text-sm font-extrabold text-ink">
-                    {line.qty}× {product.name}
-                  </span>
-                  {summary ? (
-                    <span className="mt-0.5 block break-words text-xs text-muted">
-                      {summary}
-                    </span>
-                  ) : null}
-                  {line.modifiers.notes ? (
-                    <span className="mt-0.5 block break-words text-xs italic text-muted">
-                      {line.modifiers.notes}
-                    </span>
-                  ) : null}
-                </button>
-                <span className="shrink-0 pt-0.5 text-sm font-extrabold text-ink">
-                  {money(lineUnitPrice(line) * line.qty, currency)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeLine(line.key)}
-                  aria-label="Quitar"
-                  className="focus-ring -mr-1 shrink-0 rounded-full p-1 text-sm font-bold text-muted transition hover:bg-cream hover:text-danger"
-                >
-                  ✕
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="rounded-xl2 border border-dashed border-line px-4 py-8 text-center text-sm leading-6 text-muted">
-          Elige productos del catálogo para armar el ticket.
-        </p>
-      )}
 
       {/* ------------------------------- Promos -------------------------------- */}
       <div className="border-t border-line pt-4">
@@ -767,7 +812,7 @@ export function PosModule() {
       <PageHeader
         eyebrow={cashClosedToday ? "Caja cerrada" : "Caja abierta"}
         title="Punto de venta"
-        desc="Arma el ticket, personaliza cada bebida y cobra. Cada venta crea su comanda y descuenta los insumos de la receta."
+        desc="Fase 1: arma la orden y personaliza cada bebida. Fase 2: ticket final, descuento, propina y pago. Cada venta crea su comanda y descuenta los insumos de la receta."
       />
 
       {cashClosedToday ? (
@@ -796,6 +841,77 @@ export function PosModule() {
         </Card>
       ) : null}
 
+      {/* ------------------------------ Fases ------------------------------- */}
+      <ol className="flex flex-wrap items-center gap-2 text-xs font-extrabold" aria-label="Fases del cobro">
+        {(
+          [
+            { id: "orden", n: 1, label: "Orden" },
+            { id: "cobro", n: 2, label: "Ticket final y pago" },
+          ] as const
+        ).map((step, i) => {
+          const current = phase === step.id;
+          return (
+            <li key={step.id} className="flex items-center gap-2">
+              {i > 0 ? <span aria-hidden className="text-muted">→</span> : null}
+              <button
+                type="button"
+                onClick={() => {
+                  if (step.id === "cobro" && !cart.length) return;
+                  setPhase(step.id);
+                }}
+                disabled={step.id === "cobro" && !cart.length}
+                aria-current={current ? "step" : undefined}
+                className={cx(
+                  "focus-ring inline-flex items-center gap-2 rounded-full px-4 py-2 transition disabled:opacity-50",
+                  current
+                    ? "bg-ink text-paper"
+                    : "border border-line bg-white text-ink hover:border-matcha",
+                )}
+              >
+                <span
+                  className={cx(
+                    "flex h-5 w-5 items-center justify-center rounded-full text-[10px]",
+                    current ? "bg-matcha-light text-ink" : "bg-cream text-muted",
+                  )}
+                >
+                  {step.n}
+                </span>
+                {step.label}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      {phase === "cobro" ? (
+        /* ----------------------- Fase 2: ticket final y pago ----------------------- */
+        <div className="gap-5 space-y-5 lg:grid lg:grid-cols-[1fr_400px] lg:space-y-0">
+          <div className="min-w-0 self-start lg:sticky lg:top-24">
+            <Card>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="display text-2xl text-ink">Ticket final</h2>
+                <Button variant="ghost" onClick={() => setPhase("orden")}>
+                  ← Editar orden
+                </Button>
+              </div>
+              {cartList(false)}
+              <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-sm">
+                <span className="text-muted">
+                  Subtotal · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
+                </span>
+                <span className="font-extrabold text-ink">
+                  {money(subtotal, currency)}
+                </span>
+              </div>
+            </Card>
+          </div>
+          <Card className="self-start">
+            <h2 className="display mb-4 text-2xl text-ink">Cobro</h2>
+            {payBody}
+          </Card>
+        </div>
+      ) : (
+        <>
       <div className="gap-5 xl:grid xl:grid-cols-[1fr_360px]">
         {/* -------------------------------- Catálogo ------------------------------ */}
         <div className="min-w-0 space-y-4">
@@ -890,8 +1006,8 @@ export function PosModule() {
         {/* --------------------------- Ticket (escritorio) ------------------------- */}
         <div className="hidden self-start xl:sticky xl:top-24 xl:block">
           <Card>
-            <h2 className="display mb-4 text-2xl text-ink">Ticket</h2>
-            {ticketBody}
+            <h2 className="display mb-4 text-2xl text-ink">Orden</h2>
+            {orderBody}
           </Card>
         </div>
       </div>
@@ -904,19 +1020,21 @@ export function PosModule() {
           className="focus-ring animate-rise fixed inset-x-4 bottom-16 z-30 flex items-center justify-between gap-3 rounded-full bg-ink px-5 py-3.5 text-paper shadow-lift lg:bottom-6 lg:left-[274px] xl:hidden"
         >
           <span className="text-sm font-extrabold">
-            🧾 Ticket · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
+            🧾 Orden · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
           </span>
-          <span className="display text-lg">{money(total, currency)}</span>
+          <span className="display text-lg">{money(subtotal, currency)}</span>
         </button>
       ) : null}
 
       <Modal
         open={mobileTicketOpen}
         onClose={() => setMobileTicketOpen(false)}
-        title="Ticket"
+        title="Orden"
       >
-        {ticketBody}
+        {orderBody}
       </Modal>
+        </>
+      )}
 
       {/* ------------------------ Modal de personalización ------------------------ */}
       <Modal

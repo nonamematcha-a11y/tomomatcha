@@ -141,27 +141,33 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 ### 5.1 Pantalla
 - Cabecera: «Caja abierta» o «Caja cerrada» y el título «Punto de venta».
 - A la izquierda el catálogo: buscador «Buscar producto…» (busca en el nombre y en la descripción) y chips de categoría: «Todos» y las categorías del menú (solo aparecen las categorías activas que tienen algún producto activo).
-- A la derecha (en pantalla grande) el **Ticket**. En celular el ticket se abre desde la barra inferior «🧾 Ticket · N artículos».
+- El cobro va en **dos fases**, marcadas arriba: **1 Orden** y **2 Ticket final y pago**. Se puede volver de la 2 a la 1 con «← Editar orden» o tocando «1 Orden».
+- En la fase 1, a la derecha (en computadora ancha) está la **Orden** con cada producto, su precio y el subtotal. En tablet y celular la orden se abre desde la barra inferior «🧾 Orden · N artículos».
 - Solo se muestran los productos activos. Si la carta está vacía aparece «La carta está vacía»: el administrador debe crear productos en Productos o cargar el catálogo sugerido desde Ajustes; el empleado debe pedírselo a un administrador.
 - Si el corte de hoy ya se hizo aparece «Ventas en pausa: el corte de hoy ya se registró» (con «Ir a Corte de caja» para el administrador) y el botón de cobrar queda bloqueado.
 
 ### 5.2 Cobrar paso a paso
-1. **¿Dónde se consume?** Elige «Para aquí» o «Para llevar». Ver 5.4: no es un detalle estético.
-2. **Busca o filtra** el producto y tócalo. Se abre su ventana de personalización.
-3. En la ventana, según lo que permita ese producto (solo aparece lo personalizable):
+**Fase 1 · Orden**
+1. **Busca o filtra** el producto y tócalo. Se abre su ventana de personalización.
+2. En la ventana, según lo que permita ese producto (solo aparece lo personalizable):
    - **Cantidad**: botones − y + (de 1 a 99).
    - **Leche**: una opción por cada leche disponible; las que tienen cargo extra lo muestran («Avena +$10»). Por omisión viene la primera leche disponible.
    - **Dulzor**: «Sin azúcar», 25 %, 50 %, 75 % o 100 %. Por omisión 50 %.
    - **Temperatura**: «Caliente 🔥» o «Frío 🧊». Por omisión caliente.
    - **Extras**: casillas con su precio («+$15»).
    - **Notas para barra**: texto libre de hasta 200 caracteres («Ej. sin popote, nombre para el vaso…»). Se ve en la comanda de la barra.
-4. Pulsa **«Agregar · $X»**. El renglón entra al ticket.
-5. Repite con los demás productos. Para **cambiar** un renglón tócalo en el ticket (el botón dice «Guardar · $X»). Para **quitarlo**, la ✕ a su derecha.
-6. **Promoción** (opcional): «Sin promoción», «Descuento 10%» o «Cliente frecuente 15%», o escribe cualquier porcentaje en «Otro descuento (%)». Lo escrito manda sobre la promoción; al tocar una promoción el campo se vacía. Si pasa de 100 % se aplica 100 % y lo avisa.
-7. **Propina**: «Sin propina» (viene así por omisión), 10 %, 15 %, 20 %, o escribe otro porcentaje en «Otro porcentaje (%)».
-8. **Método de pago**: «Efectivo», «Tarjeta» y, solo si el módulo está encendido en Ajustes, «Mercado Pago».
-9. Si es **Efectivo**: escribe en «Efectivo recibido» lo que entregó el cliente, o toca «Exacto», «$200» o «$500». El sistema muestra «Cambio: $X». Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
-10. Pulsa **«Cobrar $X»**. Aparece «Cobro completado» con «Venta #N registrada» y el total, con los botones «Nueva venta» y «Ver comanda».
+3. Pulsa **«Agregar · $X»**. El renglón entra a la orden.
+4. Repite con los demás productos. Para **cambiar** un renglón tócalo en la orden (el botón dice «Guardar · $X»). Para **quitarlo**, la ✕ a su derecha. Cada renglón muestra su precio y abajo va el subtotal.
+5. Pulsa **«Continuar al cobro →»**.
+
+**Fase 2 · Ticket final y pago**
+- A la izquierda queda el ticket final (solo lectura; para cambiarlo, «← Editar orden»). A la derecha, el cobro:
+1. **¿Dónde se consume?** Elige «Para aquí» o «Para llevar». Ver 5.4: no es un detalle estético.
+2. **Promoción** (opcional): «Sin promoción», «Descuento 10%» o «Cliente frecuente 15%», o escribe cualquier porcentaje en «Otro descuento (%)». Lo escrito manda sobre la promoción; al tocar una promoción el campo se vacía. Si pasa de 100 % se aplica 100 % y lo avisa.
+3. **Propina**: «Sin propina» (viene así por omisión), 10 %, 15 %, 20 %, o escribe otro porcentaje en «Otro porcentaje (%)».
+4. **Método de pago**: «Efectivo», «Tarjeta» y, solo si el módulo está encendido en Ajustes, «Mercado Pago».
+5. Si es **Efectivo**: escribe en «Efectivo recibido» lo que entregó el cliente, o toca «Exacto», «$200» o «$500». El sistema muestra «Cambio: $X». Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
+6. Pulsa **«Cobrar $X»**. Aparece «Cobro completado» con «Venta #N registrada» y el total, con los botones «Nueva venta» y «Ver comanda». La caja vuelve sola a la fase 1.
 
 ### 5.3 Cómo se calcula el total
 - **Precio de una línea** = precio del producto + cargo de la leche elegida + precio de cada extra, por la cantidad.
