@@ -105,8 +105,28 @@ function OrderCard({ order }: { order: Order }) {
 
       <div className="mt-3 space-y-2.5">
         {order.items.map((item, idx) => {
+          // Desglose con los precios guardados al cobrar: base, leche y extras.
+          // La leche no guarda su cargo aparte; es lo que queda de los
+          // modificadores después de restar los extras.
+          const extras = item.modifiers.extras ?? [];
+          const extrasSum = extras.reduce((sum, e) => sum + e.price, 0);
+          const milkCharge = Math.max(
+            Math.round((item.modsPrice - extrasSum) * 100) / 100,
+            0,
+          );
+          const breakdown: { label: string; amount: string }[] = [
+            { label: item.name, amount: money(item.unitPrice, currency) },
+          ];
+          if (item.modifiers.milkName) {
+            breakdown.push({
+              label: `Leche ${item.modifiers.milkName}`,
+              amount: milkCharge > 0 ? `+${money(milkCharge, currency)}` : "sin costo",
+            });
+          }
+          for (const extra of extras) {
+            breakdown.push({ label: extra.name, amount: `+${money(extra.price, currency)}` });
+          }
           const details: string[] = [];
-          if (item.modifiers.milkName) details.push(item.modifiers.milkName);
           if (item.modifiers.sweetness !== undefined) {
             details.push(
               item.modifiers.sweetness === 0
@@ -118,9 +138,6 @@ function OrderCard({ order }: { order: Order }) {
             details.push(
               item.modifiers.temperature === "caliente" ? "Caliente" : "Frío",
             );
-          }
-          for (const extra of item.modifiers.extras ?? []) {
-            details.push(extra.name);
           }
           return (
             <div key={idx}>
@@ -134,6 +151,21 @@ function OrderCard({ order }: { order: Order }) {
                   {money((item.unitPrice + item.modsPrice) * item.qty, currency)}
                 </span>
               </p>
+              {breakdown.length > 1 || item.qty > 1 ? (
+                <div className="mt-1 space-y-0.5 text-xs text-muted">
+                  {breakdown.map((row, i) => (
+                    <p key={i} className="flex justify-between gap-3">
+                      <span className="min-w-0 break-words">{row.label}</span>
+                      <span className="shrink-0 tabular-nums">{row.amount}</span>
+                    </p>
+                  ))}
+                  {item.qty > 1 ? (
+                    <p className="font-bold text-ink/70">
+                      {money(item.unitPrice + item.modsPrice, currency)} × {item.qty}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {details.length ? (
                 <p className="mt-0.5 text-xs leading-5 text-muted">
                   {details.join(" · ")}

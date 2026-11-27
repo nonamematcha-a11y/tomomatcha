@@ -191,21 +191,38 @@ export function PosModule() {
     return product.price + milkSurcharge + extrasSum;
   };
 
-  const summaryFor = (line: CartLine): string => {
+  /*
+   * Desglose del precio de un renglón: producto, leche y extras con lo que
+   * suma cada uno, para que quien cobra vea de dónde sale el importe. Lo que
+   * no cambia el precio (dulzor, temperatura) va aparte, en `detailsFor`.
+   */
+  const breakdownFor = (line: CartLine): { label: string; amount: string }[] => {
+    const product = state.products.find((p) => p.id === line.productId);
+    if (!product) return [];
+    const rows = [{ label: product.name, amount: money(product.price, currency) }];
+    const milk = line.modifiers.milkId
+      ? state.milks.find((mi) => mi.id === line.modifiers.milkId)
+      : undefined;
+    if (milk) {
+      rows.push({
+        label: `Leche ${milk.name}`,
+        amount: milk.surcharge > 0 ? `+${money(milk.surcharge, currency)}` : "sin costo",
+      });
+    }
+    for (const id of line.modifiers.extraIds) {
+      const extra = state.extras.find((e) => e.id === id);
+      if (extra) rows.push({ label: extra.name, amount: `+${money(extra.price, currency)}` });
+    }
+    return rows;
+  };
+
+  const detailsFor = (line: CartLine): string => {
     const parts: string[] = [];
     const m = line.modifiers;
-    if (m.milkId) {
-      const milk = state.milks.find((mi) => mi.id === m.milkId);
-      if (milk) parts.push(`Leche: ${milk.name}`);
-    }
     if (m.sweetness !== undefined) {
       parts.push(m.sweetness === 0 ? "Sin azúcar" : `${m.sweetness}% dulzor`);
     }
     if (m.temperature) parts.push(TEMP_LABEL[m.temperature]);
-    for (const id of m.extraIds) {
-      const extra = state.extras.find((e) => e.id === id);
-      if (extra) parts.push(extra.name);
-    }
     return parts.join(" · ");
   };
 
@@ -395,7 +412,9 @@ export function PosModule() {
           {cart.map((line) => {
             const product = state.products.find((p) => p.id === line.productId);
             if (!product) return null;
-            const summary = summaryFor(line);
+            const breakdown = breakdownFor(line);
+            const details = detailsFor(line);
+            const unit = lineUnitPrice(line);
             return (
               <li
                 key={line.key}
@@ -411,9 +430,26 @@ export function PosModule() {
                   <span className="block break-words text-sm font-extrabold text-ink">
                     {line.qty}× {product.name}
                   </span>
-                  {summary ? (
+                  {breakdown.length > 1 || line.qty > 1 ? (
+                    <span className="mt-1 block space-y-0.5 text-xs text-muted">
+                      {breakdown.map((row, i) => (
+                        <span key={i} className="flex justify-between gap-3">
+                          <span className="min-w-0 break-words">{row.label}</span>
+                          <span className="shrink-0 tabular-nums">{row.amount}</span>
+                        </span>
+                      ))}
+                      {line.qty > 1 ? (
+                        <span className="flex justify-between gap-3 font-bold text-ink/70">
+                          <span>
+                            {money(unit, currency)} × {line.qty}
+                          </span>
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
+                  {details ? (
                     <span className="mt-0.5 block break-words text-xs text-muted">
-                      {summary}
+                      {details}
                     </span>
                   ) : null}
                   {line.modifiers.notes ? (

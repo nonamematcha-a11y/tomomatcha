@@ -157,7 +157,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
    - **Extras**: casillas con su precio («+$15»).
    - **Notas para barra**: texto libre de hasta 200 caracteres («Ej. sin popote, nombre para el vaso…»). Se ve en la comanda de la barra.
 3. Pulsa **«Agregar · $X»**. El renglón entra a la orden.
-4. Repite con los demás productos. Para **cambiar** un renglón tócalo en la orden (el botón dice «Guardar · $X»). Para **quitarlo**, la ✕ a su derecha. Cada renglón muestra su precio y abajo va el subtotal.
+4. Repite con los demás productos. Para **cambiar** un renglón tócalo en la orden (el botón dice «Guardar · $X»). Para **quitarlo**, la ✕ a su derecha. Cada renglón muestra su precio y, debajo, el desglose: el producto con su precio, la leche («sin costo» o «+$X») y cada extra con «+$X»; si la cantidad es mayor a 1 añade «$precio × N». Dulzor y temperatura van en otra línea. Abajo va el subtotal.
 5. Pulsa **«Continuar al cobro →»**.
 
 **Fase 2 · Ticket final y pago**
@@ -386,7 +386,7 @@ Cada venta cobrada llega aquí como una tarjeta. El tablero tiene cuatro columna
 - A la derecha: «hace N min» mientras no esté entregado. **Menos de 6 minutos** se ve normal, **desde 6** en ámbar, **desde 10** en rojo y toda la tarjeta se tiñe de rojo. Al entregarse muestra «✔ HH:MM».
 - El contador corre desde que se cobró; **no se reinicia** al cambiar de estado. Se recalcula con cada actualización de pantalla (cada ~15 segundos), no cada segundo.
 - Etiqueta de servicio: «🍽️ Para aquí» o «🥤 Para llevar».
-- Renglones: cantidad × producto con su precio a la derecha (producto + leche + extras, por la cantidad), y debajo la leche, «Sin azúcar» o «N% dulzor», «Caliente» o «Frío» y los extras. Las notas del cajero salen en cursiva con 📝.
+- Renglones: cantidad × producto con su importe a la derecha y, debajo, el desglose con los precios del momento del cobro (producto, leche «sin costo» o «+$X», cada extra «+$X» y «$precio × N» si hay más de uno). Luego «Sin azúcar» o «N% dulzor» y «Caliente» o «Frío». Las notas del cajero salen en cursiva con 📝.
 - Pie: total; si hubo propina, «incluye $X de propina»; el método de pago.
 
 ### 10.3 Cómo avanza un pedido
