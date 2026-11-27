@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   // La plantilla también antepone el aviso al título propio de cada página
   // (p. ej. «Entrar · TomoMatcha»), no sólo al título por omisión.
   title: envLabel
-    ? { template: "[PRUEBAS] %s", default: "[PRUEBAS] TomoMatcha · Operación" }
+    ? { template: "[TEST] %s", default: "[TEST] TomoMatcha · Operación" }
     : "TomoMatcha · Operación",
   description:
     "Sistema de operación de TomoMatcha: punto de venta, comandas, inventario por receta, reportes, lealtad y corte de caja.",

@@ -1,29 +1,33 @@
 /* ============================================================================
  * Aviso de ambiente de pruebas.
  *
- * Marco ámbar alrededor de toda la pantalla y una etiqueta fija arriba, en
- * cualquier despliegue que no sea producción. Va encima de todo y no recibe
- * clics (`pointer-events-none`) para no tapar ni mover ningún botón: el
- * diseño de la aplicación queda idéntico, sólo se le pone un marco.
+ * Marco ámbar alrededor de toda la pantalla y una muesca («notch») arriba al
+ * centro, en cualquier despliegue que no sea producción. El marco no recibe
+ * clics (`pointer-events-none`) para no tapar ni mover ningún botón.
  *
- * En producción `environmentLabel()` es `null` y este componente no pinta
- * nada, así que puede vivir en el layout raíz sin condiciones extra.
+ * La muesca sí se puede subir con un clic cuando estorba (por ejemplo, si
+ * tapa algo del encabezado en el celular): se esconde hacia arriba y deja una
+ * pestañita para bajarla otra vez. El marco se queda siempre, para que el
+ * aviso nunca desaparezca del todo.
+ *
+ * En producción `environmentLabel()` es `null` y no se pinta nada, así que
+ * puede vivir en el layout raíz sin condiciones extra.
  * ========================================================================== */
 
 import { environmentLabel } from "@/lib/env";
+import { EnvNotch } from "@/components/env-notch";
 
 export function EnvBanner() {
   const label = environmentLabel();
   if (!label) return null;
 
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-[60] border-[5px] border-[#f59e0b]"
-    >
-      <div className="absolute left-1/2 top-0 -translate-x-1/2 rounded-b-xl bg-[#f59e0b] px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#1c1917] shadow-lg">
-        {label} · no es la tienda real
-      </div>
-    </div>
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-[60] border-[5px] border-[#f59e0b]"
+      />
+      <EnvNotch label={label} />
+    </>
   );
 }

@@ -148,9 +148,9 @@ export const appUrl =
 export function environmentLabel(): string | null {
   const vercelEnv = read("VERCEL_ENV");
   if (vercelEnv === "production") return null;
-  if (vercelEnv === "preview") return "Ambiente de pruebas";
+  if (vercelEnv === "preview") return "Ambiente TEST";
   if (vercelEnv === "development" || process.env.NODE_ENV === "development") {
-    return "Desarrollo local";
+    return "Ambiente LOCAL";
   }
   return null;
 }
