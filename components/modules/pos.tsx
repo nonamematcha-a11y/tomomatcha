@@ -872,35 +872,42 @@ export function PosModule() {
 
         {activePayment === "efectivo" ? (
           <div className="mt-3 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Chip
-                active={cashReceived !== "" && received === total}
+            {/* Recibido ocupa casi todo el ancho; «Exacto» al lado, más chico. */}
+            <div className="flex items-stretch gap-2">
+              <div className="relative flex-1">
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-extrabold text-muted"
+                >
+                  $
+                </span>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  aria-label="Efectivo recibido"
+                  placeholder="Recibido"
+                  value={cashReceived}
+                  onChange={(e) => {
+                    const text = numericText(e.target.value);
+                    if (text !== null) setCashReceived(text);
+                  }}
+                  className="h-14 rounded-2xl !pl-9 text-lg font-extrabold"
+                />
+              </div>
+              <button
+                type="button"
                 onClick={() => setCashReceived(String(total))}
+                aria-pressed={cashReceived !== "" && received === total}
+                className={cx(
+                  "focus-ring w-28 shrink-0 rounded-2xl border-2 text-sm font-extrabold transition",
+                  cashReceived !== "" && received === total
+                    ? "border-matcha-deep bg-matcha-deep text-paper"
+                    : "border-line bg-white text-ink hover:border-matcha",
+                )}
               >
                 Exacto
-              </Chip>
-              {[200, 500, 1000].map((bill) => (
-                <Chip
-                  key={bill}
-                  active={cashReceived === String(bill)}
-                  onClick={() => setCashReceived(String(bill))}
-                >
-                  {money(bill, currency)}
-                </Chip>
-              ))}
-              <Input
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                aria-label="Efectivo recibido"
-                placeholder="Recibido"
-                value={cashReceived}
-                onChange={(e) => {
-                  const text = numericText(e.target.value);
-                  if (text !== null) setCashReceived(text);
-                }}
-                className="!w-32 rounded-full !py-2"
-              />
+              </button>
             </div>
             {cart.length && cashReceived !== "" && !cashOk ? (
               <p className="text-sm font-extrabold text-danger">

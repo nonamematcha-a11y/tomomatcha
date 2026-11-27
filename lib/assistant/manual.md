@@ -166,7 +166,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 2. **Descuento** (opcional): escribe el porcentaje en el campo «Descuento» (vacío = sin descuento). «Quitar» lo borra. Si pasa de 100 % se aplica 100 % y lo avisa. En el ticket queda como «Descuento N%». Ya no hay botones de promoción fijos.
 3. **Propina**: «Sin propina» (viene así por omisión), 10 %, 15 %, 20 %, o escribe otro porcentaje en «Otro %».
 4. **Método de pago**: dos botones grandes, «Efectivo» y «Tarjeta». Mercado Pago ya no se ofrece en la caja (las ventas viejas con ese método siguen en reportes y cortes).
-5. Si es **Efectivo**: escribe en «Recibido» lo que entregó el cliente, o toca «Exacto», «$200», «$500» o «$1,000». El cambio aparece en grande dentro del recuadro del total. Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
+5. Si es **Efectivo**: escribe en «Recibido» lo que entregó el cliente, o toca «Exacto» (a un lado del campo) si pagó justo. El cambio aparece en grande dentro del recuadro del total. Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
 6. Pulsa **«Cobrar $X»**. Aparece «Cobro completado» con «Venta #N registrada» y el total, con los botones «Nueva venta» y «Ver comanda». La caja vuelve sola a la fase 1.
 
 ### 5.3 Cómo se calcula el total
