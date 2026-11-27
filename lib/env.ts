@@ -133,3 +133,24 @@ export const appUrl =
     ? `https://${read("VERCEL_PROJECT_PRODUCTION_URL")}`
     : null) ??
   (read("VERCEL_URL") ? `https://${read("VERCEL_URL")}` : null);
+
+/* --------------------------------- Ambiente --------------------------------- */
+
+/**
+ * Nombre del ambiente cuando NO es producción, o `null` en producción.
+ *
+ * Existe para que nadie confunda la copia de pruebas con la tienda real: con
+ * dos pestañas abiertas, vender en la equivocada descuadra la caja del día.
+ * Se decide con `VERCEL_ENV`, que Vercel pone solo en cada despliegue
+ * (`production`, `preview`, `development`), así que no hay variable que
+ * olvidar. En producción devuelve `null` y la interfaz no cambia en nada.
+ */
+export function environmentLabel(): string | null {
+  const vercelEnv = read("VERCEL_ENV");
+  if (vercelEnv === "production") return null;
+  if (vercelEnv === "preview") return "Ambiente de pruebas";
+  if (vercelEnv === "development" || process.env.NODE_ENV === "development") {
+    return "Desarrollo local";
+  }
+  return null;
+}

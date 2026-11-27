@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { esMX } from "@clerk/localizations";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
-import { clerkStatus } from "@/lib/env";
+import { EnvBanner } from "@/components/env-banner";
+import { clerkStatus, environmentLabel } from "@/lib/env";
 import "./globals.css";
 
 // Las fuentes se auto-hospedan en el build: la aplicación no pide tipografías
@@ -20,8 +21,12 @@ const sans = Inter({
   display: "swap",
 });
 
+// Fuera de producción la pestaña del navegador también lo dice, para que el
+// ambiente se distinga aun con la ventana minimizada.
+const envLabel = environmentLabel();
+
 export const metadata: Metadata = {
-  title: "TomoMatcha · Operación",
+  title: envLabel ? `[PRUEBAS] TomoMatcha · Operación` : "TomoMatcha · Operación",
   description:
     "Sistema de operación de TomoMatcha: punto de venta, comandas, inventario por receta, reportes, lealtad y corte de caja.",
   robots: { index: false, follow: false },
@@ -38,7 +43,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const shell = (
     <html lang="es-MX" className={`${display.variable} ${sans.variable}`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <EnvBanner />
+      </body>
     </html>
   );
 
