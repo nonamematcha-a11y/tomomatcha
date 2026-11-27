@@ -733,18 +733,45 @@ export function PosModule() {
         ) : null}
       </div>
 
-      {pctRow({
-        label: "Descuento",
-        chips: PROMOS.map((p) => ({ pct: p.pct, text: p.pct === 0 ? "Sin" : `${p.pct}%` })),
-        activePct: discountTyped ? null : promoPct,
-        onChip: (pct) => {
-          setPromoPct(pct);
-          setDiscountCustomPct("");
-        },
-        custom: discountCustomPct,
-        onCustom: setDiscountCustomPct,
-        aria: "Otro porcentaje de descuento",
-      })}
+      {/* Descuento: solo se escribe el porcentaje (vacío = sin descuento). */}
+      <div>
+        <p className="eyebrow">Descuento</p>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              aria-label="Porcentaje de descuento"
+              placeholder="Sin descuento · escribe el %"
+              value={discountCustomPct}
+              onChange={(e) => {
+                const text = numericText(e.target.value);
+                if (text !== null) setDiscountCustomPct(text);
+              }}
+              className={cx(
+                "rounded-full !py-2.5 pr-10",
+                discountCustomPct !== "" && "border-matcha bg-matcha-mist font-extrabold",
+              )}
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-extrabold text-muted"
+            >
+              %
+            </span>
+          </div>
+          {discountCustomPct !== "" ? (
+            <button
+              type="button"
+              onClick={() => setDiscountCustomPct("")}
+              className="focus-ring shrink-0 rounded-full border border-line bg-white px-3 py-2 text-xs font-extrabold text-muted transition hover:border-danger hover:text-danger"
+            >
+              Quitar
+            </button>
+          ) : null}
+        </div>
+      </div>
       {discountOverflow ? (
         <p className="-mt-3 text-xs font-bold text-danger">
           El descuento no puede pasar de 100%; se aplica 100%.

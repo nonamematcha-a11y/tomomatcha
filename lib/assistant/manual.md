@@ -163,7 +163,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 **Fase 2 · Ticket final y pago**
 - A la izquierda queda el ticket final (solo lectura; para cambiarlo, «← Editar orden») con subtotal, descuento, propina y total. A la derecha, el cobro: arriba el **total a cobrar en grande** y debajo:
 1. **¿Dónde se consume?** Elige «Para aquí» o «Para llevar». Ver 5.4: no es un detalle estético.
-2. **Descuento** (opcional): «Sin descuento», «10%» o «15%», o escribe cualquier porcentaje en «Otro %». Lo escrito manda sobre los botones; al tocar un botón el campo se vacía. Si pasa de 100 % se aplica 100 % y lo avisa. En el ticket el 10 % se registra como «Descuento 10%» y el 15 % como «Cliente frecuente 15%».
+2. **Descuento** (opcional): escribe el porcentaje en el campo «Descuento» (vacío = sin descuento). «Quitar» lo borra. Si pasa de 100 % se aplica 100 % y lo avisa. En el ticket queda como «Descuento N%». Ya no hay botones de promoción fijos.
 3. **Propina**: «Sin propina» (viene así por omisión), 10 %, 15 %, 20 %, o escribe otro porcentaje en «Otro %».
 4. **Método de pago**: dos botones grandes, «Efectivo» y «Tarjeta». Mercado Pago ya no se ofrece en la caja (las ventas viejas con ese método siguen en reportes y cortes).
 5. Si es **Efectivo**: escribe en «Recibido» lo que entregó el cliente, o toca «Exacto», «$200», «$500» o «$1,000». El cambio aparece en grande dentro del recuadro del total. Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
@@ -172,7 +172,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 ### 5.3 Cómo se calcula el total
 - **Precio de una línea** = precio del producto + cargo de la leche elegida + precio de cada extra, por la cantidad.
 - **Subtotal** = suma de las líneas.
-- **Descuento** = el porcentaje de la promoción (o el escrito en «Otro %») aplicado sobre el subtotal. Da el **consumo**.
+- **Descuento** = el porcentaje de la promoción (el escrito en el campo «Descuento») aplicado sobre el subtotal. Da el **consumo**.
 - **Propina** = el porcentaje elegido aplicado sobre el **consumo ya con descuento**. La promoción nunca le quita nada a la propina.
 - **Total** = consumo + propina. Es lo que se cobra.
 - La propina no puede pasar del 100 % del consumo. Si se escribe más, el sistema muestra «La propina no puede pasar del 100% del consumo.» y no deja cobrar.
