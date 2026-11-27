@@ -201,6 +201,14 @@ export interface PreparedItem {
   discardedAt: string | null;
 }
 
+/** Apertura del día: con cuánto efectivo arrancó el cajón y quién abrió. */
+export interface ShiftOpen {
+  dateKey: string;
+  openedAt: string;
+  openingFloat: number;
+  openedBy: string;
+}
+
 /** Ticket borrado desde Administración de pedidos, con su copia. */
 export interface OrderDeletion {
   id: string;
@@ -273,6 +281,8 @@ export interface AppState {
   customers: Customer[];
   preparedItems: PreparedItem[];
   cashCloses: CashClose[];
+  /** Apertura de hoy, o `null` si el día no se ha iniciado. */
+  todayShift: ShiftOpen | null;
   /** Últimos tickets borrados; sólo se envían a administradores. */
   deletions: OrderDeletion[];
   /** Configuración de infraestructura visible para la interfaz */

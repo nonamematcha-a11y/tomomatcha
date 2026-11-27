@@ -36,6 +36,7 @@ import type {
   Temperature,
 } from "./types";
 import type {
+  ShiftOpenRow,
   OrderDeletionRow,
   CashCloseRow,
   CategoryRow,
@@ -494,6 +495,7 @@ export async function loadAppState(me: Staff): Promise<AppState> {
     preparedItems,
     staffRows,
     deletions,
+    shiftOpens,
   ] = await Promise.all([
     supabase
       .from("ingredients")
@@ -546,6 +548,13 @@ export async function loadAppState(me: Staff): Promise<AppState> {
           .order("deleted_at", { ascending: false })
           .limit(DELETION_LIMIT)
       : Promise.resolve({ data: null, error: null }),
+    // Las dos aperturas más recientes bastan para saber si hoy ya se abrió,
+    // sin depender aquí de la zona horaria (se compara con `todayKey`).
+    supabase
+      .from("shift_opens")
+      .select("*")
+      .order("date_key", { ascending: false })
+      .limit(2),
   ]);
 
   if (ingredients.error) {
@@ -570,6 +579,9 @@ export async function loadAppState(me: Staff): Promise<AppState> {
       `No se pudieron leer los productos preparados: ${preparedItems.error.message}`,
     );
   }
+  if (shiftOpens.error) {
+    throw new Error(`No se pudo leer la apertura del día: ${shiftOpens.error.message}`);
+  }
   if (deletions.error) {
     throw new Error(
       `No se pudo leer la bitácora de borrados: ${deletions.error.message}`,
@@ -580,10 +592,24 @@ export async function loadAppState(me: Staff): Promise<AppState> {
   }
 
   const settings = toSettings(settingsRow);
+  const todayKey = dayKey(new Date(), settings.timezone);
 
   return {
     loadedAt: new Date().toISOString(),
-    todayKey: dayKey(new Date(), settings.timezone),
+    todayKey,
+    todayShift: (() => {
+      const row = ((shiftOpens.data ?? []) as ShiftOpenRow[]).find(
+        (r) => r.date_key === todayKey,
+      );
+      return row
+        ? {
+            dateKey: row.date_key,
+            openedAt: row.opened_at,
+            openingFloat: num(row.opening_float),
+            openedBy: row.opened_by_name || "Equipo",
+          }
+        : null;
+    })(),
     me,
     role: me.role,
     settings,

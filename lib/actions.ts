@@ -645,6 +645,24 @@ export async function closeCash(
   });
 }
 
+/**
+ * Inicia el día con el fondo de caja contado. Cualquier persona activa del
+ * equipo puede abrir (quien llega primero abre la tienda); cerrar sigue siendo
+ * de administradores.
+ */
+export async function openShift(
+  openingFloat: number,
+): Promise<ActionResult<undefined>> {
+  return run(requireStaff, async (staff) => {
+    const { error } = await db().rpc("open_shift", {
+      p_float: reqNumber(openingFloat, "El fondo de caja", { min: 0, max: 1_000_000 }),
+      p_staff_id: staff.id,
+    });
+    if (error) throw new Error(error.message);
+    return undefined;
+  });
+}
+
 /** Reabre el turno del día borrando el corte, para poder seguir cobrando. */
 export async function reopenCash(): Promise<ActionResult<undefined>> {
   return run(requireAdmin, async () => {

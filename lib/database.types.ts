@@ -247,6 +247,16 @@ export type CashCloseRow = {
   created_at: string;
 }
 
+/** Apertura del día con su fondo (`…0014_apertura_turno.sql`). */
+export type ShiftOpenRow = {
+  id: string;
+  date_key: string;
+  opened_at: string;
+  opening_float: number;
+  opened_by: string | null;
+  opened_by_name: string;
+};
+
 /** Copia de un ticket borrado (`…0013_bitacora_borrados.sql`). */
 export type OrderDeletionRow = {
   id: string;
@@ -329,6 +339,7 @@ export type Database = {
       cash_closes: Table<CashCloseRow, "date_key">;
       media_assets: Table<MediaAssetRow, "object_key">;
       prepared_items: Table<PreparedItemRow, "name" | "expires_on">;
+      shift_opens: Table<ShiftOpenRow, "date_key">;
       order_deletions: Table<
         OrderDeletionRow,
         "order_id" | "folio" | "order_created_at" | "status" | "payment" | "snapshot"
@@ -337,6 +348,10 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       business_day: { Args: { at?: string }; Returns: string };
+      open_shift: {
+        Args: { p_float: number; p_staff_id?: string | null };
+        Returns: string;
+      };
       create_order: {
         Args: { payload: Json; p_staff_id?: string | null };
         Returns: string;
