@@ -201,6 +201,19 @@ export interface PreparedItem {
   discardedAt: string | null;
 }
 
+/** Ticket borrado desde Administración de pedidos, con su copia. */
+export interface OrderDeletion {
+  id: string;
+  folio: number;
+  orderCreatedAt: string;
+  status: OrderStatus;
+  payment: PaymentMethod;
+  total: number;
+  deletedAt: string;
+  deletedBy: string;
+  items: { name: string; emoji: string; qty: number; amount: number }[];
+}
+
 export interface CashClose {
   id: string;
   dateKey: string;
@@ -260,6 +273,8 @@ export interface AppState {
   customers: Customer[];
   preparedItems: PreparedItem[];
   cashCloses: CashClose[];
+  /** Últimos tickets borrados; sólo se envían a administradores. */
+  deletions: OrderDeletion[];
   /** Configuración de infraestructura visible para la interfaz */
   media: { configured: boolean; publicBase: string | null };
 }

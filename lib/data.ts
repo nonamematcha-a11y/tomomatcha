@@ -4,6 +4,7 @@ import { dayKey } from "./format";
 import { r2PublicBase, isR2Configured } from "./r2";
 import { db, num } from "./supabase";
 import type {
+  OrderDeletion,
   CashClose,
   Category,
   Customer,
@@ -35,6 +36,7 @@ import type {
   Temperature,
 } from "./types";
 import type {
+  OrderDeletionRow,
   CashCloseRow,
   CategoryRow,
   CustomerRow,
@@ -66,6 +68,8 @@ import { toStaff } from "./auth";
 const ORDER_WINDOW_DAYS = 9;
 const CUSTOMER_LIMIT = 1000;
 const CASH_CLOSE_LIMIT = 60;
+/** Tickets borrados que se muestran en Administración de pedidos. */
+const DELETION_LIMIT = 50;
 const PREPARED_LIMIT = 200;
 
 /* ------------------------------- Traductores -------------------------------- */
@@ -177,6 +181,42 @@ function toCashClose(row: CashCloseRow): CashClose {
     orders: row.orders_count,
     notes: row.notes ?? undefined,
     closedBy: row.closed_by_name || "Equipo",
+  };
+}
+
+/**
+ * La copia del ticket es JSON de la base: se lee campo por campo, igual que
+ * `parseModifiers`, y lo que no tenga forma de renglón se descarta.
+ */
+function toOrderDeletion(row: OrderDeletionRow): OrderDeletion {
+  const snap =
+    row.snapshot && typeof row.snapshot === "object" && !Array.isArray(row.snapshot)
+      ? row.snapshot
+      : {};
+  const rawItems = Array.isArray(snap.items) ? snap.items : [];
+  const items = rawItems.flatMap((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+    const qty = num(raw.qty as number);
+    const unit = num(raw.unit_price as number) + num(raw.mods_price as number);
+    return [
+      {
+        name: typeof raw.name === "string" ? raw.name : "Producto",
+        emoji: typeof raw.emoji === "string" ? raw.emoji : "🍵",
+        qty,
+        amount: Math.round(unit * qty * 100) / 100,
+      },
+    ];
+  });
+  return {
+    id: row.id,
+    folio: row.folio,
+    orderCreatedAt: row.order_created_at,
+    status: row.status,
+    payment: row.payment,
+    total: num(row.total),
+    deletedAt: row.deleted_at,
+    deletedBy: row.deleted_by_name || "Equipo",
+    items,
   };
 }
 
@@ -453,6 +493,7 @@ export async function loadAppState(me: Staff): Promise<AppState> {
     cashCloses,
     preparedItems,
     staffRows,
+    deletions,
   ] = await Promise.all([
     supabase
       .from("ingredients")
@@ -497,6 +538,14 @@ export async function loadAppState(me: Staff): Promise<AppState> {
           .order("active", { ascending: false })
           .order("created_at", { ascending: true })
       : Promise.resolve({ data: null, error: null }),
+    // La bitácora de borrados también es sólo para administradores.
+    me.role === "admin"
+      ? supabase
+          .from("order_deletions")
+          .select("*")
+          .order("deleted_at", { ascending: false })
+          .limit(DELETION_LIMIT)
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (ingredients.error) {
@@ -519,6 +568,11 @@ export async function loadAppState(me: Staff): Promise<AppState> {
   if (preparedItems.error) {
     throw new Error(
       `No se pudieron leer los productos preparados: ${preparedItems.error.message}`,
+    );
+  }
+  if (deletions.error) {
+    throw new Error(
+      `No se pudo leer la bitácora de borrados: ${deletions.error.message}`,
     );
   }
   if (staffRows.error) {
@@ -546,6 +600,7 @@ export async function loadAppState(me: Staff): Promise<AppState> {
       toPreparedItem,
     ),
     cashCloses: ((cashCloses.data ?? []) as CashCloseRow[]).map(toCashClose),
+    deletions: ((deletions.data ?? []) as OrderDeletionRow[]).map(toOrderDeletion),
     media: { configured: isR2Configured(), publicBase: r2PublicBase() },
   };
 }

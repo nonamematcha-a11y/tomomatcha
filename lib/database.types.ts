@@ -247,6 +247,21 @@ export type CashCloseRow = {
   created_at: string;
 }
 
+/** Copia de un ticket borrado (`…0013_bitacora_borrados.sql`). */
+export type OrderDeletionRow = {
+  id: string;
+  order_id: string;
+  folio: number;
+  order_created_at: string;
+  status: OrderStatusDb;
+  payment: PaymentDb;
+  total: number;
+  snapshot: Json;
+  deleted_by: string | null;
+  deleted_by_name: string;
+  deleted_at: string;
+}
+
 export type PreparedItemRow = {
   id: string;
   name: string;
@@ -314,6 +329,10 @@ export type Database = {
       cash_closes: Table<CashCloseRow, "date_key">;
       media_assets: Table<MediaAssetRow, "object_key">;
       prepared_items: Table<PreparedItemRow, "name" | "expires_on">;
+      order_deletions: Table<
+        OrderDeletionRow,
+        "order_id" | "folio" | "order_created_at" | "status" | "payment" | "snapshot"
+      >;
     };
     Views: { [_ in never]: never };
     Functions: {

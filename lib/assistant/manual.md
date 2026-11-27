@@ -157,7 +157,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
    - **Notas para barra**: texto libre de hasta 200 caracteres («Ej. sin popote, nombre para el vaso…»). Se ve en la comanda de la barra.
 4. Pulsa **«Agregar · $X»**. El renglón entra al ticket.
 5. Repite con los demás productos. Para **cambiar** un renglón tócalo en el ticket (el botón dice «Guardar · $X»). Para **quitarlo**, la ✕ a su derecha.
-6. **Promoción** (opcional): «Sin promoción», «Descuento 10%» o «Cliente frecuente 15%». Son las únicas tres; no se puede escribir un descuento distinto.
+6. **Promoción** (opcional): «Sin promoción», «Descuento 10%» o «Cliente frecuente 15%», o escribe cualquier porcentaje en «Otro descuento (%)». Lo escrito manda sobre la promoción; al tocar una promoción el campo se vacía. Si pasa de 100 % se aplica 100 % y lo avisa.
 7. **Propina**: «Sin propina» (viene así por omisión), 10 %, 15 %, 20 %, o escribe otro porcentaje en «Otro porcentaje (%)».
 8. **Método de pago**: «Efectivo», «Tarjeta» y, solo si el módulo está encendido en Ajustes, «Mercado Pago».
 9. Si es **Efectivo**: escribe en «Efectivo recibido» lo que entregó el cliente, o toca «Exacto», «$200» o «$500». El sistema muestra «Cambio: $X». Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
@@ -166,7 +166,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 ### 5.3 Cómo se calcula el total
 - **Precio de una línea** = precio del producto + cargo de la leche elegida + precio de cada extra, por la cantidad.
 - **Subtotal** = suma de las líneas.
-- **Descuento** = el porcentaje de la promoción aplicado sobre el subtotal. Da el **consumo**.
+- **Descuento** = el porcentaje de la promoción (o el escrito en «Otro descuento (%)») aplicado sobre el subtotal. Da el **consumo**.
 - **Propina** = el porcentaje elegido aplicado sobre el **consumo ya con descuento**. La promoción nunca le quita nada a la propina.
 - **Total** = consumo + propina. Es lo que se cobra.
 - La propina no puede pasar del 100 % del consumo. Si se escribe más, el sistema muestra «La propina no puede pasar del 100% del consumo.» y no deja cobrar.
@@ -280,11 +280,11 @@ Abajo, «Cortes anteriores» lista los 12 más recientes: día, número de ticke
 Dos partes: un **panel rápido** de los últimos días y, debajo, el **Histórico de ventas** completo. No dependen de los módulos encendidos o apagados.
 
 ### 8.1 Panel rápido
-- Selector **«Hoy»** / **«7 días»** (viene en «7 días»). Afecta a las cinco tarjetas, a «Métodos de pago» y a «Horas pico». **No** afecta a «Ventas por día» ni a «Top productos».
+- Selector **«Hoy»** / **«7 días»** (viene en «7 días»). Afecta a las cinco tarjetas, a «Métodos de pago» y a «Horas pico». **No** afecta a «Ventas por día» ni a «Top productos». Para 15 días, 30 días o fechas a la medida usa el Histórico de abajo.
 - Se calcula solo con las ventas que la aplicación tiene cargadas (aproximadamente los últimos 9 días). Para periodos más largos usa el Histórico.
 - Tarjetas: **Ingresos** (con propina, ya con descuentos), **Tickets** (sin cancelados), **Ticket promedio** (Ingresos ÷ Tickets, en pesos enteros), **Piezas**, **Propina** (incluida en Ingresos; es dinero del equipo, no margen).
 - **Ventas por día · últimos 7 días**: barras con el total de cada día.
-- **Top productos**: hasta 8 por unidades, sobre todo lo cargado. Su importe es a precio de lista, sin descuentos del ticket ni propina; por eso puede no coincidir con Ingresos. «(fuera del menú)» marca productos que ya se borraron.
+- **Top productos**: los 8 primeros por unidades, sobre todo lo cargado; «Ver todos» despliega la lista completa y el selector de arriba filtra por categoría. Su importe es a precio de lista, sin descuentos del ticket ni propina; por eso puede no coincidir con Ingresos. «(fuera del menú)» marca productos que ya se borraron.
 - **Métodos de pago**: gráfica de dona con el porcentaje de Efectivo, Tarjeta y Mercado Pago (Mercado Pago aparece siempre en Reportes aunque esté apagado en Ajustes).
 - **Horas pico**: cuántos tickets por hora, de las 7:00 a las 22:59 (los tickets de 23:00 a 6:59 no aparecen en esa gráfica).
 - Si no hay ninguna venta en lo cargado: «Sin ventas en los últimos días» (el histórico de abajo sigue disponible).
@@ -293,7 +293,7 @@ Dos partes: un **panel rápido** de los últimos días y, debajo, el **Históric
 Consulta todas las ventas desde la primera que se cobró, sin límite de días. Los días se cuentan en la zona horaria del negocio (la misma del corte), así que las cifras cuadran con el corte.
 
 **Filtros:**
-- Atajos: «7 días», «30 días», «Este mes», «Este año», «Todo». Viene en «30 días».
+- Atajos: «7 días», «15 días», «30 días», «Este mes», «Este año», «Todo». Viene en «30 días».
 - «Desde» y «Hasta»: fechas a la medida (aparece la insignia «Rango a la medida»). Vaciar una la deja abierta.
 - «Agrupar por»: Día, Semana, Mes o Año. Las semanas son de lunes a domingo.
 - «Método de pago»: Todos, Efectivo, Tarjeta o Mercado Pago (filtra todo).
@@ -372,14 +372,15 @@ Cada venta cobrada llega aquí como una tarjeta. El tablero tiene cuatro columna
 - Cabecera: «Barra · flujo de pedidos» y el título «Comandas». Botones: «Pantalla completa» y «+ Nueva venta» (lleva al Punto de venta, que con la caja cerrada no deja cobrar).
 - Si no hay pedidos activos aparece «La barra está al día» con el botón «Abrir punto de venta».
 - Columnas y sus textos vacíos: **Nuevo** («Cobra en el punto de venta para ver pedidos aquí.»), **En preparación** («Sin pedidos en preparación.»), **Listo** («Sin pedidos listos por entregar.») y **Entregado** («Aún no hay entregas hoy.»). Cada una lleva un contador.
-- Las tres primeras ordenan de la más antigua a la más nueva. **Entregado** va de la más reciente a la más antigua, muestra máximo 6 y avisa «+N entregadas hoy» si hay más.
+- Las tres primeras ordenan de la más antigua a la más nueva. **Entregado** va de la más reciente a la más antigua y muestra las últimas 6; si hay más aparece el botón «Ver todas (+N entregadas hoy)», y «Ver sólo las últimas» las vuelve a ocultar.
+- En tablet las columnas se acomodan de dos en dos; en computadora ancha se ven las cuatro juntas. Solo en celular se desliza de lado.
 
 ### 10.2 La tarjeta de un pedido
 - Arriba: el folio (#12) y la hora en que se cobró.
 - A la derecha: «hace N min» mientras no esté entregado. **Menos de 6 minutos** se ve normal, **desde 6** en ámbar, **desde 10** en rojo y toda la tarjeta se tiñe de rojo. Al entregarse muestra «✔ HH:MM».
 - El contador corre desde que se cobró; **no se reinicia** al cambiar de estado. Se recalcula con cada actualización de pantalla (cada ~15 segundos), no cada segundo.
 - Etiqueta de servicio: «🍽️ Para aquí» o «🥤 Para llevar».
-- Renglones: cantidad × producto, y debajo la leche, «Sin azúcar» o «N% dulzor», «Caliente» o «Frío» y los extras. Las notas del cajero salen en cursiva con 📝.
+- Renglones: cantidad × producto con su precio a la derecha (producto + leche + extras, por la cantidad), y debajo la leche, «Sin azúcar» o «N% dulzor», «Caliente» o «Frío» y los extras. Las notas del cajero salen en cursiva con 📝.
 - Pie: total; si hubo propina, «incluye $X de propina»; el método de pago.
 
 ### 10.3 Cómo avanza un pedido
@@ -420,7 +421,7 @@ Comandas carga los últimos ~9 días de ventas más todos los pedidos abiertos d
 Ruta «Administración de pedidos». Encabezado: «Solo administración». Sirve para corregir capturas: quitar un producto suelto de un ticket o borrar el ticket completo.
 
 ### 11.1 Qué muestra
-- Un único filtro, el botón **«Solo hoy»** (con ✓ cuando está activo). Sin buscador ni filtro por fecha.
+- Un selector de día: «Últimos días (todo lo cargado)», «Hoy» o cualquiera de los días con ventas dentro de lo cargado. Sin buscador. Para fechas más viejas, el histórico de Reportes.
 - Lista de tickets de la ventana cargada (últimos ~9 días más abiertos de cualquier día), del más nuevo al más antiguo. **Un ticket de hace más de 9 días no se puede cancelar, borrar ni editar desde ninguna pantalla**; solo se puede ver en el histórico de Reportes.
 - Tarjetas: «Tickets», «Productos» (suma unidades e incluye cancelados aunque diga «Renglones cobrados») e «Importe» (sin contar cancelados).
 - Cada ticket: folio, hora y fecha, número de productos, método de pago y quién cobró; el estado («Nuevo», «En preparación», «Listo», «Entregado» o «Cancelado»); y el botón «Borrar ticket». Al desplegarlo se ven sus renglones con «Quitar».
@@ -456,6 +457,7 @@ Ruta «Administración de pedidos». Encabezado: «Solo administración». Sirve
 
 ### 11.5 Borrar un ticket
 - «Borrar ticket» → «Desaparece del histórico. No se puede deshacer.» → **«Sí, borrar»**. Aviso «Ticket #N borrado».
+- Antes de borrar se guarda una copia: al final de la pantalla, «Tickets borrados (N)» lista los últimos 50 borrados con folio, fecha de venta, importe, método, sus productos con precio, quién lo borró y cuándo. La copia es solo para consulta: el ticket no vuelve a contar en ventas, caja ni inventario.
 - Primero devuelve insumos y retira puntos (si no estaba cancelado) y después elimina la venta con su bitácora. Un ticket ya cancelado también se puede borrar.
 - El folio no se reutiliza.
 - Solo administradores. Existe para limpiar pruebas.
@@ -704,11 +706,11 @@ Si alguien pide algo de esta lista, la respuesta es «no se puede» (y, si el ne
 **Tickets ya cobrados**
 - Editar el método de pago, la propina, «Para aquí/Para llevar», el descuento, el cliente, la fecha o el contenido de un ticket (solo cancelar, quitar un renglón o borrar; ver sección 11).
 - Agregar productos a un ticket ya cobrado.
-- Deshacer una cancelación o un borrado.
+- Deshacer una cancelación o un borrado (de un borrado solo queda la copia de consulta en «Tickets borrados»).
 - Modificar tickets de más de ~9 días desde ninguna pantalla, ni de un día con corte hecho.
 
 **En la caja**
-- Editar precios al vender, escribir un descuento libre (solo hay 3 promociones), propina en pesos, pagar un ticket con dos métodos, cuentas abiertas o por mesa, dividir la cuenta, guardar un ticket «para después», cobrar sin internet.
+- Editar precios al vender, descuento en pesos (el descuento es solo en porcentaje), propina en pesos, pagar un ticket con dos métodos, cuentas abiertas o por mesa, dividir la cuenta, guardar un ticket «para después», cobrar sin internet.
 - Imprimir tickets o comandas.
 - Bloquear una venta por falta de insumos.
 
@@ -724,7 +726,7 @@ Si alguien pide algo de esta lista, la respuesta es «no se puede» (y, si el ne
 - Conectar los productos preparados (caducidades) al inventario o venderlos desde la caja.
 
 **Reportes**
-- Exportar a PDF o a Excel nativo (solo CSV de tickets), comparar periodos, filtrar por producto, categoría o cajero, o ver los modificadores (leche, dulzor, extras) de un ticket en el histórico.
+- Exportar a PDF o a Excel nativo (solo CSV de tickets), comparar periodos, filtrar el histórico por producto, categoría o cajero (el filtro por categoría existe solo en el Top productos del panel rápido), o ver los modificadores (leche, dulzor, extras) de un ticket en el histórico.
 
 **Equipo y configuración**
 - Invitar o crear usuarios desde la aplicación, editar su nombre o correo, cambiar tu propio rol, desactivarte o quitarte a ti mismo.
@@ -774,7 +776,7 @@ Un administrador: Corte de caja → «Reabrir turno» → «Sí, reabrir». Se b
 ### 18.5 «La caja no cuadra»
 1. Recuerda que **Efectivo esperado** = ventas en efectivo del día **más propina en efectivo**, **sin** el fondo de caja. Cuenta el cajón sin el fondo con el que abriste.
 2. Revisa que la **zona horaria** de Ajustes sea la correcta: si no, el «día» no coincide con el del negocio.
-3. Revisa si hay tickets cancelados o mal cobrados del día (Administración de pedidos, filtro «Solo hoy»).
+3. Revisa si hay tickets cancelados o mal cobrados del día (Administración de pedidos, día «Hoy»).
 4. Tarjeta y Mercado Pago no se cuentan contra el cajón.
 5. Anota la explicación en «Notas del corte (opcional)».
 

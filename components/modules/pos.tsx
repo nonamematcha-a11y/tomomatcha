@@ -115,7 +115,10 @@ export function PosModule() {
   const [category, setCategory] = useState<CategoryId | "todos">("todos");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [draft, setDraft] = useState<DraftLine | null>(null);
-  const [discountPct, setDiscountPct] = useState(0);
+  const [promoPct, setPromoPct] = useState(0);
+  // Descuento variable (como en Loyverse): si se teclea un porcentaje, manda
+  // sobre la promoción elegida. Vacío = se usa la promoción.
+  const [discountCustomPct, setDiscountCustomPct] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [payment, setPayment] = useState<PaymentMethod>("efectivo");
   // Por omisión "para llevar": si el cajero olvida cambiarlo, el sistema
@@ -208,6 +211,12 @@ export function PosModule() {
   // Lo que se cobra por el consumo, ya con descuento. La propina se calcula
   // sobre esto y se suma después: una promoción no le recorta al equipo lo que
   // el cliente quiso dejarle.
+  const discountTyped = discountCustomPct.trim() !== "";
+  const typedDiscount = Number(discountCustomPct) || 0;
+  const discountOverflow = discountTyped && typedDiscount > 100;
+  const discountPct = discountTyped
+    ? Math.min(Math.max(typedDiscount, 0), 100)
+    : promoPct;
   const consumo = Math.round(subtotal * (1 - discountPct / 100) * 100) / 100;
   const discountAmount = Math.round((subtotal - consumo) * 100) / 100;
 
@@ -224,7 +233,9 @@ export function PosModule() {
 
   const total = Math.round((consumo + tip) * 100) / 100;
   const itemCount = cart.reduce((n, l) => n + l.qty, 0);
-  const activePromo = PROMOS.find((p) => p.pct === discountPct);
+  const discountLabel = discountTyped
+    ? `Descuento ${pctLabel(discountPct)}%`
+    : PROMOS.find((p) => p.pct === promoPct)?.label;
   const selectedCustomer = state.customers.find((c) => c.id === customerId);
 
   // Si Mercado Pago se apaga en Ajustes, ese método deja de estar seleccionable.
@@ -327,7 +338,7 @@ export function PosModule() {
         checkout({
           lines: cart,
           discountPct,
-          discountLabel: discountPct > 0 ? activePromo?.label : undefined,
+          discountLabel: discountPct > 0 ? discountLabel : undefined,
           payment: activePayment,
           serviceMode,
           tip,
@@ -349,7 +360,8 @@ export function PosModule() {
     if (!result) return;
 
     setCart([]);
-    setDiscountPct(0);
+    setPromoPct(0);
+    setDiscountCustomPct("");
     setCustomerId("");
     setPayment("efectivo");
     setServiceMode("llevar");
@@ -465,13 +477,34 @@ export function PosModule() {
           {PROMOS.map((promo) => (
             <Chip
               key={promo.pct}
-              active={discountPct === promo.pct}
-              onClick={() => setDiscountPct(promo.pct)}
+              active={!discountTyped && promoPct === promo.pct}
+              onClick={() => {
+                setPromoPct(promo.pct);
+                setDiscountCustomPct("");
+              }}
             >
               {promo.label}
             </Chip>
           ))}
         </div>
+        <Input
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          aria-label="Otro porcentaje de descuento"
+          placeholder="Otro descuento (%)"
+          value={discountCustomPct}
+          onChange={(e) => {
+            const text = numericText(e.target.value);
+            if (text !== null) setDiscountCustomPct(text);
+          }}
+          className="mt-2 rounded-full"
+        />
+        {discountOverflow ? (
+          <p className="mt-1.5 text-xs font-bold text-danger">
+            El descuento no puede pasar de 100%; se aplica 100%.
+          </p>
+        ) : null}
       </div>
 
       {/* ------------------------------- Lealtad -------------------------------- */}
@@ -523,7 +556,7 @@ export function PosModule() {
         </div>
         {discountAmount > 0 ? (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted">Descuento · {activePromo?.label}</span>
+            <span className="text-muted">Descuento · {discountLabel}</span>
             <span className="font-bold text-matcha-deep">
               −{money(discountAmount, currency)}
             </span>
@@ -730,7 +763,7 @@ export function PosModule() {
   }
 
   return (
-    <div className="space-y-6 pb-10 lg:pb-0">
+    <div className="space-y-6 pb-10 xl:pb-0">
       <PageHeader
         eyebrow={cashClosedToday ? "Caja cerrada" : "Caja abierta"}
         title="Punto de venta"
@@ -763,7 +796,7 @@ export function PosModule() {
         </Card>
       ) : null}
 
-      <div className="gap-5 lg:grid lg:grid-cols-[1fr_360px]">
+      <div className="gap-5 xl:grid xl:grid-cols-[1fr_360px]">
         {/* -------------------------------- Catálogo ------------------------------ */}
         <div className="min-w-0 space-y-4">
           <Input
@@ -808,7 +841,7 @@ export function PosModule() {
           </div>
 
           {visibleProducts.length ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-4">
               {visibleProducts.map((p) => (
                 <button
                   key={p.id}
@@ -855,7 +888,7 @@ export function PosModule() {
         </div>
 
         {/* --------------------------- Ticket (escritorio) ------------------------- */}
-        <div className="hidden self-start lg:sticky lg:top-24 lg:block">
+        <div className="hidden self-start xl:sticky xl:top-24 xl:block">
           <Card>
             <h2 className="display mb-4 text-2xl text-ink">Ticket</h2>
             {ticketBody}
@@ -868,7 +901,7 @@ export function PosModule() {
         <button
           type="button"
           onClick={() => setMobileTicketOpen(true)}
-          className="focus-ring animate-rise fixed inset-x-4 bottom-16 z-30 flex items-center justify-between gap-3 rounded-full bg-ink px-5 py-3.5 text-paper shadow-lift lg:hidden"
+          className="focus-ring animate-rise fixed inset-x-4 bottom-16 z-30 flex items-center justify-between gap-3 rounded-full bg-ink px-5 py-3.5 text-paper shadow-lift lg:bottom-6 lg:left-[274px] xl:hidden"
         >
           <span className="text-sm font-extrabold">
             🧾 Ticket · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}

@@ -36,10 +36,11 @@ import { Badge, Button, Card, Select, cx } from "@/components/ui";
  * explica un hueco en los folios, y esconderla haría que el histórico mintiera.
  * ========================================================================== */
 
-type PresetId = "7d" | "30d" | "mes" | "ano" | "todo" | "custom";
+type PresetId = "7d" | "15d" | "30d" | "mes" | "ano" | "todo" | "custom";
 
 const PRESETS: { id: PresetId; label: string }[] = [
   { id: "7d", label: "7 días" },
+  { id: "15d", label: "15 días" },
   { id: "30d", label: "30 días" },
   { id: "mes", label: "Este mes" },
   { id: "ano", label: "Este año" },
@@ -49,6 +50,7 @@ const PRESETS: { id: PresetId; label: string }[] = [
 /** Agrupamiento que mejor se lee para cada rango, al elegirlo por primera vez. */
 const PRESET_BUCKET: Record<Exclude<PresetId, "custom">, HistoryBucket> = {
   "7d": "dia",
+  "15d": "dia",
   "30d": "dia",
   mes: "dia",
   ano: "mes",
@@ -64,6 +66,8 @@ function presetRange(preset: Exclude<PresetId, "custom">, today: string): Range 
   switch (preset) {
     case "7d":
       return { from: shiftDayKey(today, -6), to: today };
+    case "15d":
+      return { from: shiftDayKey(today, -14), to: today };
     case "30d":
       return { from: shiftDayKey(today, -29), to: today };
     case "mes":

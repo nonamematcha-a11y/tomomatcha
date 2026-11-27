@@ -124,8 +124,15 @@ function OrderCard({ order }: { order: Order }) {
           }
           return (
             <div key={idx}>
-              <p className="text-sm font-bold text-ink">
-                {item.qty}× <span aria-hidden>{item.emoji}</span> {item.name}
+              <p className="flex items-baseline justify-between gap-2 text-sm font-bold text-ink">
+                <span>
+                  {item.qty}× <span aria-hidden>{item.emoji}</span> {item.name}
+                </span>
+                {/* Precio de la línea (producto + leche/extras) por cantidad,
+                    para cuadrar el ticket sin abrir la administración. */}
+                <span className="shrink-0 text-xs font-extrabold text-muted">
+                  {money((item.unitPrice + item.modsPrice) * item.qty, currency)}
+                </span>
               </p>
               {details.length ? (
                 <p className="mt-0.5 text-xs leading-5 text-muted">
@@ -239,6 +246,7 @@ export function OrdersModule() {
   const { state, tz, submit, busy } = useStore();
   const { activeOrders, todayKey } = useDerived();
   const [showCancelled, setShowCancelled] = useState(false);
+  const [showAllDelivered, setShowAllDelivered] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -273,8 +281,12 @@ export function OrdersModule() {
     if (status === "entregado") {
       return {
         status,
-        orders: deliveredToday.slice(0, DELIVERED_CAP),
-        extra: Math.max(deliveredToday.length - DELIVERED_CAP, 0),
+        orders: showAllDelivered
+          ? deliveredToday
+          : deliveredToday.slice(0, DELIVERED_CAP),
+        extra: showAllDelivered
+          ? 0
+          : Math.max(deliveredToday.length - DELIVERED_CAP, 0),
         count: deliveredToday.length,
       };
     }
@@ -325,7 +337,7 @@ export function OrdersModule() {
       <div
         ref={boardRef}
         className={cx(
-          "scrollbar-slim flex snap-x gap-4 overflow-x-auto pb-4 xl:grid xl:grid-cols-4 xl:overflow-visible xl:pb-0",
+          "scrollbar-slim flex snap-x gap-4 overflow-x-auto pb-4 md:grid md:grid-cols-2 md:overflow-visible md:pb-0 xl:grid-cols-4",
           fullscreen && "overflow-y-auto bg-paper p-6",
         )}
       >
@@ -333,7 +345,7 @@ export function OrdersModule() {
           <section
             key={col.status}
             aria-label={`Columna ${STATUS_META[col.status].label}`}
-            className="min-w-[280px] snap-start xl:min-w-0"
+            className="min-w-[280px] snap-start md:min-w-0"
           >
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-extrabold uppercase tracking-[0.08em] text-ink">
@@ -350,10 +362,18 @@ export function OrdersModule() {
                   {EMPTY_COPY[col.status]}
                 </p>
               ) : null}
-              {col.extra > 0 ? (
-                <p className="text-center text-xs text-muted">
-                  +{col.extra} entregadas hoy
-                </p>
+              {col.status === "entregado" &&
+              deliveredToday.length > DELIVERED_CAP ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllDelivered((v) => !v)}
+                  aria-expanded={showAllDelivered}
+                  className="focus-ring w-full rounded-full border border-line bg-white px-4 py-2 text-xs font-extrabold text-muted transition hover:border-matcha hover:text-matcha-deep"
+                >
+                  {showAllDelivered
+                    ? "Ver sólo las últimas"
+                    : `Ver todas (+${col.extra} entregadas hoy)`}
+                </button>
               ) : null}
             </div>
           </section>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { deleteOrder, deleteOrderItem } from "@/lib/actions";
 import { useStore } from "@/lib/store";
-import { dayKey, money, time } from "@/lib/format";
+import { dayKey, dayKeyLabel, money, time } from "@/lib/format";
 import { PAYMENT_META, STATUS_META, type Order } from "@/lib/types";
 import {
   AccessGate,
@@ -28,8 +28,9 @@ import {
  * producto que se vendió, y mientras el producto exista no se puede borrar el
  * insumo de su receta.
  *
- * Sólo administradores, por lo mismo: es la única parte del sistema que destruye
- * histórico sin dejar rastro.
+ * Sólo administradores, por lo mismo. Desde `…0013_bitacora_borrados.sql` cada
+ * ticket borrado deja una copia (quién, cuándo y qué tenía) que se lista al
+ * final de esta pantalla: un borrado por error ya no desaparece sin explicación.
  * ========================================================================== */
 
 function OrderRow({ order }: { order: Order }) {
@@ -161,14 +162,22 @@ function OrderRow({ order }: { order: Order }) {
 
 export function OrderAdminModule() {
   const { state, currency, tz } = useStore();
-  const [onlyToday, setOnlyToday] = useState(false);
+  // Día a mostrar: "todos" o una clave de día operativo (YYYY-MM-DD).
+  const [day, setDay] = useState<string>("todos");
+  const [showDeleted, setShowDeleted] = useState(false);
 
   if (state.role === "empleado") {
     return <AccessGate module="Administración de pedidos" />;
   }
 
+  const onlyToday = day === state.todayKey;
+  // Días con ventas dentro de lo cargado, del más reciente al más viejo.
+  const days = [...new Set(state.orders.map((o) => dayKey(o.createdAt, tz)))].sort(
+    (a, b) => b.localeCompare(a),
+  );
+
   const orders = [...state.orders]
-    .filter((o) => !onlyToday || dayKey(o.createdAt, tz) === state.todayKey)
+    .filter((o) => day === "todos" || dayKey(o.createdAt, tz) === day)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const sales = orders.filter((o) => o.status !== "cancelado");
@@ -183,22 +192,21 @@ export function OrderAdminModule() {
       <PageHeader
         eyebrow="Solo administración"
         title="Administración de pedidos"
-        desc="Quita un producto suelto de un ticket, o borra el ticket completo. A diferencia de anular, aquí el dato desaparece de la base: sirve para deshacer capturas de prueba."
+        desc="Quita un producto suelto de un ticket, o borra el ticket completo. A diferencia de anular, el ticket sale de ventas y reportes; queda una copia en «Tickets borrados» al final de la pantalla."
         actions={
-          <button
-            type="button"
-            onClick={() => setOnlyToday((v) => !v)}
-            aria-pressed={onlyToday}
-            className={cx(
-              "focus-ring inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold transition",
-              onlyToday
-                ? "bg-ink text-paper"
-                : "border border-line bg-white text-ink hover:border-matcha hover:text-matcha-deep",
-            )}
+          <select
+            aria-label="Día a mostrar"
+            value={day}
+            onChange={(e) => setDay(e.target.value)}
+            className="focus-ring rounded-full border border-line bg-white px-4 py-2 text-xs font-extrabold text-ink"
           >
-            {onlyToday ? <span aria-hidden>✓</span> : null}
-            Solo hoy
-          </button>
+            <option value="todos">Últimos días (todo lo cargado)</option>
+            {days.map((k) => (
+              <option key={k} value={k}>
+                {k === state.todayKey ? "Hoy" : dayKeyLabel(k)}
+              </option>
+            ))}
+          </select>
         }
       />
 
@@ -206,7 +214,13 @@ export function OrderAdminModule() {
         <Stat
           label="Tickets"
           value={orders.length}
-          hint={onlyToday ? "de hoy" : "del histórico cargado"}
+          hint={
+            day === "todos"
+              ? "de los últimos días"
+              : onlyToday
+                ? "de hoy"
+                : dayKeyLabel(day)
+          }
         />
         <Stat label="Productos" value={productos} hint="Renglones cobrados" />
         <Stat
@@ -235,10 +249,67 @@ export function OrderAdminModule() {
       ) : (
         <EmptyState
           emoji="🧾"
-          title={onlyToday ? "Hoy no hay pedidos" : "Todavía no hay pedidos"}
+          title={
+            day === "todos" ? "Todavía no hay pedidos" : "Ese día no hay pedidos"
+          }
           desc="En cuanto se cobre en el punto de venta, los tickets aparecerán aquí para poder corregirlos."
         />
       )}
+
+      <p className="text-xs leading-5 text-muted">
+        Aquí se ven los tickets de los últimos días. Para fechas anteriores usa
+        el historial en Reportes.
+      </p>
+
+      {/* ------------------------- Bitácora de borrados ------------------------- */}
+      {state.deletions.length ? (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowDeleted((v) => !v)}
+            aria-expanded={showDeleted}
+            className="focus-ring inline-flex items-center gap-2 rounded-full text-xs font-extrabold text-muted hover:text-ink"
+          >
+            Tickets borrados ({state.deletions.length})
+            <span aria-hidden>{showDeleted ? "▴" : "▾"}</span>
+          </button>
+          {showDeleted ? (
+            <ul className="mt-3 space-y-2">
+              {state.deletions.map((d) => (
+                <li
+                  key={d.id}
+                  className="rounded-xl2 border border-line bg-white px-4 py-3"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="text-sm font-extrabold text-ink">
+                      #{d.folio}
+                      <span className="ml-2 text-xs font-normal text-muted">
+                        vendido {dayKeyLabel(dayKey(d.orderCreatedAt, tz))} ·{" "}
+                        {time(d.orderCreatedAt, tz)}
+                      </span>
+                    </p>
+                    <p className="text-sm font-extrabold text-ink">
+                      {money(d.total, currency)}
+                      <span className="ml-2 text-[11px] font-bold text-muted">
+                        {PAYMENT_META[d.payment].short}
+                      </span>
+                    </p>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    {d.items
+                      .map((it) => `${it.qty}× ${it.name} ${money(it.amount, currency)}`)
+                      .join(" · ") || "Sin renglones"}
+                  </p>
+                  <p className="mt-1 text-[11px] font-bold text-danger">
+                    Borrado por {d.deletedBy} · {dayKeyLabel(dayKey(d.deletedAt, tz))}{" "}
+                    {time(d.deletedAt, tz)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -33,6 +33,9 @@ export function ReportsModule() {
   const { state, tz, currency } = useStore();
   const { topProducts, todayKey, week } = useDerived();
   const [range, setRange] = useState<RangeId>("7d");
+  // Top de productos: filtro por categoría y opción de ver la lista completa.
+  const [topCategory, setTopCategory] = useState<string>("todas");
+  const [showAllTop, setShowAllTop] = useState(false);
 
   if (state.role === "empleado") return <AccessGate module="Reportes" />;
 
@@ -58,7 +61,11 @@ export function ReportsModule() {
 
   const maxDay = Math.max(...week.map((d) => d.total), 1);
 
-  const top = topProducts.slice(0, 8);
+  const topInCategory =
+    topCategory === "todas"
+      ? topProducts
+      : topProducts.filter((t) => t.product.category === topCategory);
+  const top = showAllTop ? topInCategory : topInCategory.slice(0, 8);
   const topMax = Math.max(top[0]?.qty ?? 1, 1);
 
   const byPayment = PAYMENT_ORDER.map((method) => {
@@ -208,7 +215,22 @@ export function ReportsModule() {
 
           {/* ---------------------------- Top productos ----------------------------- */}
           <Card>
-            <p className="eyebrow">Top productos · últimos días</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="eyebrow">Top productos · últimos días</p>
+              <select
+                aria-label="Filtrar top de productos por categoría"
+                value={topCategory}
+                onChange={(e) => setTopCategory(e.target.value)}
+                className="focus-ring rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink"
+              >
+                <option value="todas">Todas las categorías</option>
+                {state.categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.emoji} {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="mt-4 space-y-3">
               {top.map((entry, i) => (
                 <div key={entry.product.id} className="flex items-center gap-3">
@@ -243,8 +265,22 @@ export function ReportsModule() {
               ))}
               {!top.length ? (
                 <p className="rounded-xl2 border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
-                  Todavía no hay productos vendidos.
+                  {topCategory === "todas"
+                    ? "Todavía no hay productos vendidos."
+                    : "Sin ventas de esta categoría en estos días."}
                 </p>
+              ) : null}
+              {topInCategory.length > 8 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTop((v) => !v)}
+                  aria-expanded={showAllTop}
+                  className="focus-ring w-full rounded-full border border-line bg-white px-4 py-2 text-xs font-extrabold text-muted transition hover:border-matcha hover:text-matcha-deep"
+                >
+                  {showAllTop
+                    ? "Ver sólo los 8 primeros"
+                    : `Ver todos (${topInCategory.length} productos)`}
+                </button>
               ) : null}
             </div>
           </Card>
