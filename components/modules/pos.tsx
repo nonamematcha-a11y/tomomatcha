@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { checkout } from "@/lib/actions";
 import { useDerived, useStore } from "@/lib/store";
 import { money } from "@/lib/format";
@@ -133,6 +133,48 @@ export function PosModule() {
   const [mobileTicketOpen, setMobileTicketOpen] = useState(false);
   // Fase del cobro: 1) armar la orden, 2) ticket final y pago.
   const [phase, setPhase] = useState<"orden" | "cobro">("orden");
+
+  /*
+   * Ticket y panel de pago a la misma altura (solo lado a lado, desde tablet).
+   * Se mide la altura natural de cada lado y ambos toman la mayor; el cambio
+   * se anima con `transition-[height]` para que crezca suave y no de golpe.
+   * En el ticket la diferencia la absorbe un espaciador entre los renglones y
+   * los totales, así los totales siempre quedan abajo, junto al zigzag.
+   */
+  const receiptTopRef = useRef<HTMLDivElement>(null);
+  const receiptBottomRef = useRef<HTMLDivElement>(null);
+  const payInnerRef = useRef<HTMLDivElement>(null);
+  const [rowH, setRowH] = useState<number | null>(null);
+  const [receiptNatural, setReceiptNatural] = useState(0);
+
+  useLayoutEffect(() => {
+    if (phase !== "cobro") return;
+    const top = receiptTopRef.current;
+    const bottom = receiptBottomRef.current;
+    const pay = payInnerRef.current;
+    if (!top || !bottom || !pay) return;
+    const wide = window.matchMedia("(min-width: 768px)");
+
+    const measure = () => {
+      if (!wide.matches) {
+        setRowH(null);
+        return;
+      }
+      const receipt = top.offsetHeight + bottom.offsetHeight;
+      setReceiptNatural(receipt);
+      setRowH(Math.max(receipt, pay.offsetHeight));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(top);
+    ro.observe(bottom);
+    ro.observe(pay);
+    wide.addEventListener("change", measure);
+    return () => {
+      ro.disconnect();
+      wide.removeEventListener("change", measure);
+    };
+  }, [phase]);
   const [success, setSuccess] = useState<{ folio: number; total: number } | null>(
     null,
   );
@@ -1063,40 +1105,53 @@ export function PosModule() {
 
       {phase === "cobro" ? (
         /* ----------------------- Fase 2: ticket final y pago ----------------------- */
-        <div className="animate-rise gap-6 space-y-6 md:grid md:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] md:space-y-0 motion-reduce:animate-none">
+        <div className="animate-rise gap-6 space-y-6 md:grid md:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] md:items-start md:space-y-0 motion-reduce:animate-none">
           {/* Recibo: papel blanco con borde de corte en zigzag abajo. */}
-          <div className="min-w-0 self-start md:sticky md:top-24">
-            <div className="rounded-t-3xl bg-white px-6 pb-4 pt-6 shadow-lift">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-matcha-deep">
-                    {state.settings.businessName}
-                  </p>
-                  <h2 className="display mt-1 text-3xl text-ink">Ticket final</h2>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {new Date().toLocaleString("es-MX", {
-                      timeZone: state.settings.timezone,
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}{" "}
-                    · {SERVICE_META[serviceMode].emoji} {SERVICE_META[serviceMode].label}
-                  </p>
+          <div className="min-w-0">
+            <div
+              className="overflow-hidden rounded-t-3xl bg-white shadow-lift transition-[height] duration-500 ease-out motion-reduce:transition-none"
+              style={rowH !== null ? { height: rowH } : undefined}
+            >
+              <div ref={receiptTopRef} className="px-6 pt-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-matcha-deep">
+                      {state.settings.businessName}
+                    </p>
+                    <h2 className="display mt-1 text-3xl text-ink">Ticket final</h2>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {new Date().toLocaleString("es-MX", {
+                        timeZone: state.settings.timezone,
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}{" "}
+                      · {SERVICE_META[serviceMode].emoji} {SERVICE_META[serviceMode].label}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPhase("orden")}
+                    className="focus-ring shrink-0 rounded-full border border-line bg-white px-4 py-2 text-xs font-extrabold text-ink transition hover:border-matcha hover:text-matcha-deep"
+                  >
+                    ← Editar orden
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setPhase("orden")}
-                  className="focus-ring shrink-0 rounded-full border border-line bg-white px-4 py-2 text-xs font-extrabold text-ink transition hover:border-matcha hover:text-matcha-deep"
-                >
-                  ← Editar orden
-                </button>
+                <div className="mt-4 border-t-2 border-dashed border-line">
+                  {cartList(false)}
+                </div>
               </div>
-              <div className="mt-4 border-t-2 border-dashed border-line">
-                {cartList(false)}
+              {/* Espaciador: empuja los totales abajo y crece con animación. */}
+              <div
+                aria-hidden
+                className="transition-[height] duration-500 ease-out motion-reduce:transition-none"
+                style={{ height: rowH !== null ? Math.max(rowH - receiptNatural, 0) : 0 }}
+              />
+              <div ref={receiptBottomRef} className="px-6 pb-4 pt-2">
+                {ticketTotals}
+                <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-muted/70">
+                  ¡Gracias por tu visita!
+                </p>
               </div>
-              <div className="mt-2">{ticketTotals}</div>
-              <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-muted/70">
-                ¡Gracias por tu visita!
-              </p>
             </div>
             <div
               aria-hidden
@@ -1107,8 +1162,13 @@ export function PosModule() {
               }}
             />
           </div>
-          <div className="self-start rounded-3xl border border-line bg-white p-5 shadow-card md:p-6">
-            {payBody}
+          <div
+            className="overflow-hidden rounded-3xl border border-line bg-white shadow-card transition-[height] duration-500 ease-out motion-reduce:transition-none"
+            style={rowH !== null ? { height: rowH + 12 } : undefined}
+          >
+            <div ref={payInnerRef} className="p-5 md:p-6">
+              {payBody}
+            </div>
           </div>
         </div>
       ) : (
