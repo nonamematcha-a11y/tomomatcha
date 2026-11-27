@@ -255,6 +255,11 @@ export type ShiftOpenRow = {
   opening_float: number;
   opened_by: string | null;
   opened_by_name: string;
+  worker_name: string;
+  closed_at: string | null;
+  closed_by_name: string | null;
+  counted_drawer: number | null;
+  expected_drawer: number | null;
 };
 
 /** Copia de un ticket borrado (`…0013_bitacora_borrados.sql`). */
@@ -349,7 +354,11 @@ export type Database = {
     Functions: {
       business_day: { Args: { at?: string }; Returns: string };
       open_shift: {
-        Args: { p_float: number; p_staff_id?: string | null };
+        Args: { p_float: number; p_staff_id?: string | null; p_worker?: string | null };
+        Returns: string;
+      };
+      handover_shift: {
+        Args: { p_counted: number; p_staff_id?: string | null; p_next_worker?: string | null };
         Returns: string;
       };
       create_order: {

@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { checkout } from "@/lib/actions";
-import { ShiftCloseModal, ShiftStartOverlay } from "@/components/modules/shift";
+import {
+  ShiftChip,
+  ShiftCloseModal,
+  ShiftHandoverModal,
+  ShiftStartOverlay,
+} from "@/components/modules/shift";
 import { useDerived, useStore } from "@/lib/store";
 import { money } from "@/lib/format";
 import { SHOW_LEALTAD_UI } from "@/lib/feature-visibility";
@@ -136,6 +141,7 @@ export function PosModule() {
   const [phase, setPhase] = useState<"orden" | "cobro">("orden");
   // Modal de «Terminar turno» / «Resultados del día».
   const [shiftCloseOpen, setShiftCloseOpen] = useState(false);
+  const [handoverOpen, setHandoverOpen] = useState(false);
 
   /*
    * Ticket y panel de pago a la misma altura (solo lado a lado, desde tablet).
@@ -1021,30 +1027,29 @@ export function PosModule() {
   return (
     <div className="space-y-6 pb-10 md:pb-0">
       <PageHeader
-        eyebrow={
-          cashClosedToday
-            ? "Caja cerrada"
-            : state.todayShift
-              ? `Turno abierto · fondo ${money(state.todayShift.openingFloat, currency)}`
-              : "Caja abierta"
-        }
+        eyebrow={cashClosedToday ? "Día cerrado" : "Caja abierta"}
         title="Punto de venta"
         desc="Fase 1: arma la orden y personaliza cada bebida. Fase 2: ticket final, descuento, propina y pago. Cada venta crea su comanda y descuenta los insumos de la receta."
         actions={
           state.todayShift || cashClosedToday ? (
-            <button
-              type="button"
-              onClick={() => setShiftCloseOpen(true)}
-              className={cx(
-                "focus-ring inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-extrabold transition",
-                cashClosedToday
-                  ? "bg-matcha-deep text-paper hover:bg-matcha"
-                  : "border border-line bg-white text-ink hover:border-danger hover:text-danger",
-              )}
-            >
-              <span aria-hidden>{cashClosedToday ? "📊" : "🌙"}</span>
-              {cashClosedToday ? "Resultados del día" : "Terminar turno"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {!cashClosedToday ? (
+                <ShiftChip onChange={() => setHandoverOpen(true)} />
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setShiftCloseOpen(true)}
+                className={cx(
+                  "focus-ring inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-extrabold transition",
+                  cashClosedToday
+                    ? "bg-matcha-deep text-paper hover:bg-matcha"
+                    : "text-muted hover:bg-cream hover:text-danger",
+                )}
+              >
+                <span aria-hidden>{cashClosedToday ? "📊" : "🌙"}</span>
+                {cashClosedToday ? "Resultados del día" : "Cerrar día"}
+              </button>
+            </div>
           ) : null
         }
       />
@@ -1054,6 +1059,10 @@ export function PosModule() {
       <ShiftCloseModal
         open={shiftCloseOpen}
         onClose={() => setShiftCloseOpen(false)}
+      />
+      <ShiftHandoverModal
+        open={handoverOpen}
+        onClose={() => setHandoverOpen(false)}
       />
 
       {cashClosedToday ? (

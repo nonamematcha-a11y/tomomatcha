@@ -652,11 +652,35 @@ export async function closeCash(
  */
 export async function openShift(
   openingFloat: number,
+  workerName?: string,
 ): Promise<ActionResult<undefined>> {
   return run(requireStaff, async (staff) => {
     const { error } = await db().rpc("open_shift", {
       p_float: reqNumber(openingFloat, "El fondo de caja", { min: 0, max: 1_000_000 }),
       p_staff_id: staff.id,
+      p_worker: optText(workerName, 80) ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return undefined;
+  });
+}
+
+/**
+ * Relevo a mitad del día: cierra el turno abierto con el efectivo contado y
+ * abre el de quien entra con ese mismo efectivo de fondo. No es el corte del
+ * día; cualquier persona activa del equipo puede entregar la caja.
+ */
+export async function handoverShift(
+  counted: number,
+  nextWorker: string,
+): Promise<ActionResult<undefined>> {
+  return run(requireStaff, async (staff) => {
+    const next = optText(nextWorker, 80);
+    if (!next) throw new Error("Escribe quién recibe el turno");
+    const { error } = await db().rpc("handover_shift", {
+      p_counted: reqNumber(counted, "El efectivo contado", { min: 0, max: 1_000_000 }),
+      p_staff_id: staff.id,
+      p_next_worker: next,
     });
     if (error) throw new Error(error.message);
     return undefined;

@@ -9,6 +9,10 @@
  * mismo punto de venta cierra el turno (cuenta el efectivo y registra el
  * corte con `close_cash`) y enseña los resultados del día.
  *
+ * Entre la apertura y el cierre puede haber relevos (`…0015_cambio_turno.sql`):
+ * quien sale cuenta el cajón y lo entrega a quien entra, sin cerrar el día.
+ * Eso vive en un botón discreto junto al nombre de quien atiende.
+ *
  * El fondo se guarda en `shift_opens` (`…0014_apertura_turno.sql`). El corte
  * sigue midiendo el efectivo de ventas, sin fondo, igual que la pantalla de
  * Corte de caja: aquí se pide lo que hay en el cajón (fondo incluido) y se le
@@ -16,18 +20,32 @@
  * ========================================================================== */
 
 import { useState } from "react";
-import { closeCash, openShift } from "@/lib/actions";
+import { closeCash, handoverShift, openShift } from "@/lib/actions";
 import { useDerived, useStore } from "@/lib/store";
 import { money, time } from "@/lib/format";
 import { cx, Input, Modal, numericText } from "@/components/ui";
 
 /* --------------------------------- Apertura --------------------------------- */
 
+/** Nombres del equipo activo, para sugerir quién atiende. */
+function StaffNames({ id }: { id: string }) {
+  const { state } = useStore();
+  const names = [...new Set(state.staff.filter((s) => s.active).map((s) => s.fullName))];
+  return (
+    <datalist id={id}>
+      {names.map((n) => (
+        <option key={n} value={n} />
+      ))}
+    </datalist>
+  );
+}
+
 export function ShiftStartOverlay() {
   const { state, currency, submit, busy } = useStore();
   const [float, setFloat] = useState(
     state.settings.cashFloat > 0 ? String(state.settings.cashFloat) : "",
   );
+  const [worker, setWorker] = useState(state.me.fullName);
 
   const today = new Date().toLocaleDateString("es-MX", {
     timeZone: state.settings.timezone,
@@ -38,9 +56,9 @@ export function ShiftStartOverlay() {
   const amount = Number(float) || 0;
 
   const start = () =>
-    submit(() => openShift(amount), {
+    submit(() => openShift(amount, worker), {
       title: "Día iniciado",
-      detail: `Fondo de caja ${money(amount, currency)}`,
+      detail: `${worker || "Equipo"} · fondo ${money(amount, currency)}`,
     });
 
   return (
@@ -79,6 +97,18 @@ export function ShiftStartOverlay() {
             void start();
           }}
         >
+          <label className="block">
+            <span className="eyebrow">¿Quién abre?</span>
+            <Input
+              list="shift-start-staff"
+              autoComplete="off"
+              aria-label="Quién abre el turno"
+              value={worker}
+              onChange={(e) => setWorker(e.target.value)}
+              className="mt-2 rounded-2xl font-bold"
+            />
+            <StaffNames id="shift-start-staff" />
+          </label>
           <label className="block">
             <span className="eyebrow">Fondo de caja · ¿cuánto hay?</span>
             <span className="relative mt-2 block">
@@ -166,7 +196,9 @@ export function ShiftCloseModal({
   const [counted, setCounted] = useState("");
 
   const isAdmin = state.role === "admin";
-  const fondo = state.todayShift?.openingFloat ?? 0;
+  // El fondo del día es el del primer turno: en los relevos el efectivo solo
+  // cambia de manos, no entra ni sale del cajón.
+  const fondo = state.todayShifts[0]?.openingFloat ?? 0;
 
   const cashSales = todayOrders
     .filter((o) => o.payment === "efectivo")
@@ -204,7 +236,7 @@ export function ShiftCloseModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={todayClose ? "Resultados del día" : "Terminar turno"}
+      title={todayClose ? "Resultados del día" : "Cerrar día"}
     >
       {todayClose ? (
         /* ------------------------------ Resultados ------------------------------ */
@@ -261,6 +293,40 @@ export function ShiftCloseModal({
               }
             />
           </div>
+          {state.todayShifts.length > 1 ? (
+            <div>
+              <p className="eyebrow">Turnos del día</p>
+              <ul className="mt-2 divide-y divide-line rounded-2xl border border-line px-4">
+                {state.todayShifts.map((t) => {
+                  const d =
+                    t.countedDrawer !== null && t.expectedDrawer !== null
+                      ? Math.round((t.countedDrawer - t.expectedDrawer) * 100) / 100
+                      : null;
+                  return (
+                    <li key={t.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                      <span>
+                        <span className="font-extrabold text-ink">{t.workerName}</span>
+                        <span className="ml-2 text-xs text-muted">
+                          {time(t.openedAt, tz)}
+                          {t.closedAt ? ` – ${time(t.closedAt, tz)}` : " – cierre"}
+                        </span>
+                      </span>
+                      {d !== null ? (
+                        <span
+                          className={cx(
+                            "text-xs font-extrabold tabular-nums",
+                            d === 0 ? "text-matcha-deep" : d < 0 ? "text-danger" : "text-amber",
+                          )}
+                        >
+                          {d === 0 ? "Cuadró ✓" : signed(d)}
+                        </span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={onClose}
@@ -278,7 +344,7 @@ export function ShiftCloseModal({
             <Row label="Tarjeta y otros" value={money(otherSales, currency)} />
             {tips > 0 ? <Row label="Propinas" value={money(tips, currency)} /> : null}
             <Row
-              label={`Fondo de apertura${state.todayShift ? ` · ${state.todayShift.openedBy}` : ""}`}
+              label={`Fondo de apertura${state.todayShifts[0] ? ` · ${state.todayShifts[0].workerName}` : ""}`}
               value={money(fondo, currency)}
             />
             <Row label="Debe haber en cajón" value={money(expectedDrawer, currency)} strong />
@@ -332,20 +398,185 @@ export function ShiftCloseModal({
                 onClick={() => void close()}
                 className="focus-ring flex h-16 w-full items-center justify-center rounded-2xl bg-ink text-lg font-extrabold text-paper shadow-lift transition hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {busy ? "Cerrando…" : "Cerrar turno y ver resultados"}
+                {busy ? "Cerrando…" : "Cerrar día y ver resultados"}
               </button>
               <p className="text-center text-xs text-muted">
-                Después de cerrar ya no se puede cobrar hoy, salvo que un
-                administrador reabra el turno en Corte de caja.
+                Esto cierra el día completo. Para un relevo usa «Cambiar» junto
+                al nombre de quien atiende. Después de cerrar ya no se puede
+                cobrar hoy, salvo que un administrador reabra en Corte de caja.
               </p>
             </>
           ) : (
             <p className="rounded-2xl bg-cream px-4 py-3 text-center text-sm text-muted">
-              Solo un administrador puede cerrar el turno.
+              Solo un administrador puede cerrar el día. Para entregar la caja a
+              otra persona usa «Cambiar» junto al nombre de quien atiende.
             </p>
           )}
         </div>
       )}
+    </Modal>
+  );
+}
+
+/* ------------------------------- Cambio de turno ------------------------------ */
+
+/**
+ * Píldora discreta con quién atiende y desde qué hora, con «Cambiar» al
+ * lado. Va en el encabezado del punto de venta sin competir con el cobro.
+ */
+export function ShiftChip({ onChange }: { onChange: () => void }) {
+  const { state, tz } = useStore();
+  const shift = state.todayShift;
+  if (!shift) return null;
+  const initial = shift.workerName.trim().charAt(0).toUpperCase() || "·";
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white py-1 pl-1 pr-1 text-xs shadow-card">
+      <span
+        aria-hidden
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-matcha-mist text-[11px] font-extrabold text-matcha-deep"
+      >
+        {initial}
+      </span>
+      <span className="min-w-0 max-w-[10rem] truncate">
+        <span className="font-extrabold text-ink">{shift.workerName}</span>
+        <span className="text-muted"> · desde {time(shift.openedAt, tz)}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onChange}
+        className="focus-ring rounded-full px-3 py-1.5 font-extrabold text-muted transition hover:bg-cream hover:text-ink"
+      >
+        Cambiar
+      </button>
+    </span>
+  );
+}
+
+export function ShiftHandoverModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { state, currency, submit, busy, tz } = useStore();
+  const { todayOrders } = useDerived();
+  const [counted, setCounted] = useState("");
+  const [next, setNext] = useState("");
+
+  const shift = state.todayShift;
+  if (!shift) return null;
+
+  // Lo cobrado durante este turno (desde que lo recibió).
+  const shiftOrders = todayOrders.filter((o) => o.createdAt >= shift.openedAt);
+  const cash = shiftOrders
+    .filter((o) => o.payment === "efectivo")
+    .reduce((sum, o) => sum + o.total, 0);
+  const other = shiftOrders
+    .filter((o) => o.payment !== "efectivo")
+    .reduce((sum, o) => sum + o.total, 0);
+  const expected = Math.round((shift.openingFloat + cash) * 100) / 100;
+  const countedNum = Number(counted) || 0;
+  const diff = Math.round((countedNum - expected) * 100) / 100;
+
+  const handover = async () => {
+    const ok = await submit(() => handoverShift(countedNum, next), {
+      title: `Turno de ${next.trim()} iniciado`,
+      detail: `Recibe el cajón con ${money(countedNum, currency)}`,
+    });
+    if (ok !== null) {
+      setCounted("");
+      setNext("");
+      onClose();
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Cambiar turno">
+      <div className="space-y-4">
+        <p className="text-sm text-muted">
+          Entrega la caja a quien sigue. El día no se cierra: solo cambia quién
+          atiende.
+        </p>
+        <div className="divide-y divide-line rounded-2xl border border-line px-4">
+          <Row
+            label={`Turno de ${shift.workerName}`}
+            value={`${time(shift.openedAt, tz)} – ahora`}
+          />
+          <Row label="Tickets del turno" value={String(shiftOrders.length)} />
+          <Row label="Efectivo cobrado" value={money(cash, currency)} />
+          <Row label="Tarjeta y otros" value={money(other, currency)} />
+          <Row label="Recibió el cajón con" value={money(shift.openingFloat, currency)} />
+          <Row label="Debe haber en cajón" value={money(expected, currency)} strong />
+        </div>
+
+        <label className="block">
+          <span className="eyebrow">¿Cuánto hay en el cajón?</span>
+          <span className="relative mt-2 block">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl font-extrabold text-muted"
+            >
+              $
+            </span>
+            <Input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              aria-label="Efectivo en el cajón al entregar"
+              placeholder="Cuenta billetes y monedas"
+              value={counted}
+              onChange={(e) => {
+                const text = numericText(e.target.value);
+                if (text !== null) setCounted(text);
+              }}
+              className="h-14 rounded-2xl !pl-9 text-xl font-extrabold"
+            />
+          </span>
+        </label>
+        {counted !== "" ? (
+          <p
+            className={cx(
+              "text-center text-sm font-extrabold",
+              diff === 0 && "text-matcha-deep",
+              diff < 0 && "text-danger",
+              diff > 0 && "text-amber",
+            )}
+          >
+            {diff === 0
+              ? "Cuadra exacto ✓"
+              : diff < 0
+                ? `Faltan ${money(-diff, currency)}`
+                : `Sobran ${money(diff, currency)}`}
+          </p>
+        ) : null}
+
+        <label className="block">
+          <span className="eyebrow">¿Quién recibe?</span>
+          <Input
+            list="shift-next-staff"
+            autoComplete="off"
+            aria-label="Quién recibe el turno"
+            placeholder="Nombre de quien entra"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            className="mt-2 rounded-2xl font-bold"
+          />
+          <StaffNames id="shift-next-staff" />
+        </label>
+
+        <button
+          type="button"
+          disabled={busy || counted === "" || !next.trim()}
+          onClick={() => void handover()}
+          className="focus-ring flex h-16 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-matcha-deep to-matcha text-lg font-extrabold text-paper shadow-pop transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {busy ? "Entregando…" : "Entregar turno"}
+        </button>
+        <p className="text-center text-xs text-muted">
+          Quien entra recibe el cajón con lo que contaste.
+        </p>
+      </div>
     </Modal>
   );
 }

@@ -548,13 +548,13 @@ export async function loadAppState(me: Staff): Promise<AppState> {
           .order("deleted_at", { ascending: false })
           .limit(DELETION_LIMIT)
       : Promise.resolve({ data: null, error: null }),
-    // Las dos aperturas más recientes bastan para saber si hoy ya se abrió,
-    // sin depender aquí de la zona horaria (se compara con `todayKey`).
+    // Los turnos más recientes; abajo se quedan solo los de `todayKey`, para
+    // no depender aquí de la zona horaria.
     supabase
       .from("shift_opens")
       .select("*")
-      .order("date_key", { ascending: false })
-      .limit(2),
+      .order("opened_at", { ascending: false })
+      .limit(20),
   ]);
 
   if (ingredients.error) {
@@ -593,23 +593,26 @@ export async function loadAppState(me: Staff): Promise<AppState> {
 
   const settings = toSettings(settingsRow);
   const todayKey = dayKey(new Date(), settings.timezone);
+  const todayShifts = ((shiftOpens.data ?? []) as ShiftOpenRow[])
+    .filter((r) => r.date_key === todayKey)
+    .map((r) => ({
+      id: r.id,
+      dateKey: r.date_key,
+      openedAt: r.opened_at,
+      openingFloat: num(r.opening_float),
+      workerName: r.worker_name || r.opened_by_name || "Equipo",
+      openedBy: r.opened_by_name || "Equipo",
+      closedAt: r.closed_at,
+      countedDrawer: r.counted_drawer === null ? null : num(r.counted_drawer),
+      expectedDrawer: r.expected_drawer === null ? null : num(r.expected_drawer),
+    }))
+    .sort((x, y) => x.openedAt.localeCompare(y.openedAt));
 
   return {
     loadedAt: new Date().toISOString(),
     todayKey,
-    todayShift: (() => {
-      const row = ((shiftOpens.data ?? []) as ShiftOpenRow[]).find(
-        (r) => r.date_key === todayKey,
-      );
-      return row
-        ? {
-            dateKey: row.date_key,
-            openedAt: row.opened_at,
-            openingFloat: num(row.opening_float),
-            openedBy: row.opened_by_name || "Equipo",
-          }
-        : null;
-    })(),
+    todayShifts,
+    todayShift: todayShifts.find((t) => t.closedAt === null) ?? null,
     me,
     role: me.role,
     settings,

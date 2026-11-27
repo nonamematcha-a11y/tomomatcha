@@ -201,12 +201,22 @@ export interface PreparedItem {
   discardedAt: string | null;
 }
 
-/** Apertura del día: con cuánto efectivo arrancó el cajón y quién abrió. */
+/**
+ * Un turno del día: quién atiende, con cuánto efectivo recibió el cajón y,
+ * si ya entregó, cuánto contó y cuánto debía haber.
+ */
 export interface ShiftOpen {
+  id: string;
   dateKey: string;
   openedAt: string;
   openingFloat: number;
+  /** Quien atiende el turno (puede no tener cuenta propia). */
+  workerName: string;
+  /** Quien lo registró en el sistema. */
   openedBy: string;
+  closedAt: string | null;
+  countedDrawer: number | null;
+  expectedDrawer: number | null;
 }
 
 /** Ticket borrado desde Administración de pedidos, con su copia. */
@@ -281,8 +291,10 @@ export interface AppState {
   customers: Customer[];
   preparedItems: PreparedItem[];
   cashCloses: CashClose[];
-  /** Apertura de hoy, o `null` si el día no se ha iniciado. */
+  /** Turno abierto ahora, o `null` si el día no se ha iniciado. */
   todayShift: ShiftOpen | null;
+  /** Todos los turnos de hoy, del primero al último. */
+  todayShifts: ShiftOpen[];
   /** Últimos tickets borrados; sólo se envían a administradores. */
   deletions: OrderDeletion[];
   /** Configuración de infraestructura visible para la interfaz */

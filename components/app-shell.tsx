@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { useDerived, useStore } from "@/lib/store";
 import { longDate } from "@/lib/format";
@@ -50,6 +50,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { activeOrders, lowStock, cashClosedToday } = useDerived();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  /*
+   * Menú lateral ocultable en computadora y tablet horizontal, para dar todo
+   * el ancho al punto de venta. Se recuerda por navegador (preferencia de
+   * quien usa ese equipo); si no se puede guardar, simplemente arranca abierto.
+   */
+  const [navHidden, setNavHidden] = useState(false);
+  useEffect(() => {
+    try {
+      setNavHidden(window.localStorage.getItem("tm-nav-hidden") === "1");
+    } catch {
+      /* sin almacenamiento: el menú arranca visible */
+    }
+  }, []);
+  const toggleNav = (hidden: boolean) => {
+    setNavHidden(hidden);
+    try {
+      window.localStorage.setItem("tm-nav-hidden", hidden ? "1" : "0");
+    } catch {
+      /* sin almacenamiento: solo dura en esta vista */
+    }
+  };
 
   const isEmployee = state.role === "empleado";
   const pendingStaff = state.staff.filter((s) => !s.active).length;
@@ -80,10 +101,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[250px_1fr]">
+    <div className={cx("min-h-dvh lg:grid", navHidden ? "lg:grid-cols-[1fr]" : "lg:grid-cols-[250px_1fr]")}>
       {/* ------------------------------ Sidebar ------------------------------- */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[250px] flex-col bg-ink text-paper lg:flex">
-        <div className="px-6 pb-2 pt-7">
+      <aside
+        className={cx(
+          "fixed inset-y-0 left-0 z-40 hidden w-[250px] flex-col bg-ink text-paper",
+          !navHidden && "lg:flex",
+        )}
+      >
+        <div className="relative px-6 pb-2 pt-7">
+          <button
+            type="button"
+            onClick={() => toggleNav(true)}
+            aria-label="Ocultar menú"
+            title="Ocultar menú"
+            className="focus-ring absolute right-3 top-6 flex h-8 w-8 items-center justify-center rounded-full text-paper/50 transition hover:bg-white/10 hover:text-paper"
+          >
+            «
+          </button>
           <Link href="/inicio" className="focus-ring rounded-lg">
             <span className="display text-xl leading-none">
               Tomo<span className="text-matcha-light">Matcha</span>
@@ -149,10 +184,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* ----------------------------- Contenido ------------------------------ */}
-      <div className="flex min-h-dvh flex-col lg:col-start-2">
+      <div className={cx("flex min-h-dvh flex-col", !navHidden && "lg:col-start-2")}>
         <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
           <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-8">
             <div className="flex min-w-0 items-center gap-3">
+              {navHidden ? (
+                <button
+                  type="button"
+                  onClick={() => toggleNav(false)}
+                  aria-label="Mostrar menú"
+                  className="focus-ring hidden items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-extrabold text-ink transition hover:border-matcha lg:inline-flex"
+                >
+                  <span aria-hidden>☰</span> Menú
+                </button>
+              ) : null}
               <span className="display text-xl lg:hidden">
                 Tomo<span className="text-matcha-deep">Matcha</span>
               </span>
