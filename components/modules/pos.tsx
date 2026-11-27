@@ -21,7 +21,7 @@ import {
   type Temperature,
 } from "@/lib/types";
 import {
-  Badge,
+  ConfirmButton,
   Button,
   Card,
   EmptyState,
@@ -257,18 +257,17 @@ export function PosModule() {
     : PROMOS.find((p) => p.pct === promoPct)?.label;
   const selectedCustomer = state.customers.find((c) => c.id === customerId);
 
-  // Si Mercado Pago se apaga en Ajustes, ese método deja de estar seleccionable.
+  // Mercado Pago ya no se ofrece en el cobro; si quedara elegido, vale efectivo.
   const activePayment: PaymentMethod =
-    payment === "mercadopago" && !state.flags.mercadoPago ? "efectivo" : payment;
+    payment === "mercadopago" ? "efectivo" : payment;
   const received = Number(cashReceived) || 0;
   const cashOk = activePayment !== "efectivo" || received >= total;
 
+  // Solo efectivo y tarjeta: Mercado Pago se quitó del cobro a pedido de la
+  // dueña. Las ventas viejas con ese método siguen intactas en reportes.
   const paymentOptions: { id: PaymentMethod; emoji: string }[] = [
     { id: "efectivo", emoji: "💵" },
     { id: "tarjeta", emoji: "💳" },
-    ...(state.flags.mercadoPago
-      ? [{ id: "mercadopago" as PaymentMethod, emoji: "📱" }]
-      : []),
   ];
 
   /* ------------------------- Borrador (modal de línea) ---------------------- */
@@ -404,118 +403,206 @@ export function PosModule() {
    * FINAL, donde se eligen servicio, descuento, propina y método de pago. Así
    * quien toma el pedido no se distrae con el cobro, y el cobro no se mezcla
    * con el catálogo.
+   *
+   * En la orden cada renglón es una tarjeta editable; en el ticket final los
+   * mismos renglones se pintan como recibo (solo lectura, líneas punteadas).
    */
-  const cartList = (editable: boolean) => (
-    <>
-      {cart.length ? (
-        <ul className="space-y-2.5">
-          {cart.map((line) => {
-            const product = state.products.find((p) => p.id === line.productId);
-            if (!product) return null;
-            const breakdown = breakdownFor(line);
-            const details = detailsFor(line);
-            const unit = lineUnitPrice(line);
+  const lineDetail = (line: CartLine) => {
+    const breakdown = breakdownFor(line);
+    const details = detailsFor(line);
+    const unit = lineUnitPrice(line);
+    return (
+      <>
+        {breakdown.length > 1 || line.qty > 1 ? (
+          <span className="mt-1.5 block space-y-0.5 text-[11px] text-muted">
+            {breakdown.map((row, i) => (
+              <span key={i} className="flex items-baseline gap-2">
+                <span className="min-w-0 break-words">{row.label}</span>
+                <span
+                  aria-hidden
+                  className="h-px flex-1 translate-y-[-3px] border-b border-dotted border-line"
+                />
+                <span className="shrink-0 tabular-nums">{row.amount}</span>
+              </span>
+            ))}
+            {line.qty > 1 ? (
+              <span className="block font-extrabold text-ink/70">
+                {money(unit, currency)} × {line.qty}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+        {details ? (
+          <span className="mt-1.5 flex flex-wrap gap-1">
+            {details.split(" · ").map((d) => (
+              <span
+                key={d}
+                className="rounded-full bg-cream px-2 py-0.5 text-[10px] font-bold text-muted"
+              >
+                {d}
+              </span>
+            ))}
+          </span>
+        ) : null}
+        {line.modifiers.notes ? (
+          <span className="mt-1 block break-words text-[11px] italic text-muted">
+            📝 {line.modifiers.notes}
+          </span>
+        ) : null}
+      </>
+    );
+  };
+
+  const cartList = (editable: boolean) =>
+    cart.length ? (
+      <ul className={editable ? "space-y-2" : ""}>
+        {cart.map((line) => {
+          const product = state.products.find((p) => p.id === line.productId);
+          if (!product) return null;
+          const lineTotal = money(lineUnitPrice(line) * line.qty, currency);
+
+          if (!editable) {
             return (
               <li
                 key={line.key}
-                className="flex items-start gap-2 rounded-xl2 border border-line bg-paper px-3 py-2.5"
+                className="border-b border-dashed border-line py-3 last:border-0"
               >
-                <button
-                  type="button"
-                  onClick={() => (editable ? openLine(line) : undefined)}
-                  disabled={!editable}
-                  aria-label={`Editar ${product.name}`}
-                  className="focus-ring min-w-0 flex-1 rounded-lg text-left disabled:cursor-default"
-                >
-                  <span className="block break-words text-sm font-extrabold text-ink">
-                    {line.qty}× {product.name}
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 break-words text-sm font-extrabold text-ink">
+                    <span className="mr-1.5 tabular-nums text-matcha-deep">
+                      {line.qty}×
+                    </span>
+                    {product.name}
                   </span>
-                  {breakdown.length > 1 || line.qty > 1 ? (
-                    <span className="mt-1 block space-y-0.5 text-xs text-muted">
-                      {breakdown.map((row, i) => (
-                        <span key={i} className="flex justify-between gap-3">
-                          <span className="min-w-0 break-words">{row.label}</span>
-                          <span className="shrink-0 tabular-nums">{row.amount}</span>
-                        </span>
-                      ))}
-                      {line.qty > 1 ? (
-                        <span className="flex justify-between gap-3 font-bold text-ink/70">
-                          <span>
-                            {money(unit, currency)} × {line.qty}
-                          </span>
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : null}
-                  {details ? (
-                    <span className="mt-0.5 block break-words text-xs text-muted">
-                      {details}
-                    </span>
-                  ) : null}
-                  {line.modifiers.notes ? (
-                    <span className="mt-0.5 block break-words text-xs italic text-muted">
-                      {line.modifiers.notes}
-                    </span>
-                  ) : null}
-                </button>
-                <span className="shrink-0 pt-0.5 text-sm font-extrabold text-ink">
-                  {money(lineUnitPrice(line) * line.qty, currency)}
+                  <span className="display shrink-0 text-base tabular-nums text-ink">
+                    {lineTotal}
+                  </span>
                 </span>
-                {editable ? (
-                  <button
-                    type="button"
-                    onClick={() => removeLine(line.key)}
-                    aria-label="Quitar"
-                    className="focus-ring -mr-1 shrink-0 rounded-full p-1 text-sm font-bold text-muted transition hover:bg-cream hover:text-danger"
-                  >
-                    ✕
-                  </button>
-                ) : null}
+                {lineDetail(line)}
               </li>
             );
-          })}
-        </ul>
-      ) : (
-        <p className="rounded-xl2 border border-dashed border-line px-4 py-8 text-center text-sm leading-6 text-muted">
-          Elige productos del catálogo para armar la orden.
-        </p>
-      )}
+          }
 
-    </>
-  );
+          return (
+            <li
+              key={line.key}
+              className="group relative flex gap-3 rounded-2xl border border-line bg-white p-3 transition hover:border-matcha/60 hover:shadow-card"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-extrabold text-paper">
+                {line.qty}
+              </span>
+              <button
+                type="button"
+                onClick={() => openLine(line)}
+                aria-label={`Editar ${product.name}`}
+                className="focus-ring min-w-0 flex-1 rounded-lg text-left"
+              >
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 break-words text-sm font-extrabold text-ink">
+                    {product.name}
+                  </span>
+                  <span className="display shrink-0 text-base tabular-nums text-ink">
+                    {lineTotal}
+                  </span>
+                </span>
+                {lineDetail(line)}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeLine(line.key)}
+                aria-label={`Quitar ${product.name}`}
+                className="focus-ring absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-line bg-white text-[11px] font-bold text-muted shadow-card transition hover:border-danger hover:text-danger"
+              >
+                ✕
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    ) : (
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-4 py-10 text-center">
+        <span aria-hidden className="text-4xl">
+          🍵
+        </span>
+        <p className="text-sm font-extrabold text-ink">La orden está vacía</p>
+        <p className="text-xs leading-5 text-muted">
+          Toca un producto del catálogo para agregarlo.
+        </p>
+      </div>
+    );
 
   const orderBody = (
     <div className="space-y-4">
       {cartList(true)}
-
-      <div className="flex items-center justify-between border-t border-line pt-4 text-sm">
-        <span className="text-muted">
-          Subtotal · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
-        </span>
-        <span className="display text-2xl text-ink">
-          {money(subtotal, currency)}
-        </span>
+      <div className="rounded-2xl bg-ink p-4 text-paper">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-paper/60">
+            Subtotal · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
+          </span>
+          <span className="display text-3xl tabular-nums">
+            {money(subtotal, currency)}
+          </span>
+        </div>
+        <button
+          type="button"
+          disabled={!cart.length}
+          onClick={() => {
+            setMobileTicketOpen(false);
+            setPhase("cobro");
+          }}
+          className="focus-ring group mt-3 flex w-full items-center justify-center gap-2 rounded-xl2 bg-matcha-light px-4 py-3.5 text-sm font-extrabold text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Continuar al cobro
+          <span
+            aria-hidden
+            className="transition-transform group-hover:translate-x-1 motion-reduce:transition-none"
+          >
+            →
+          </span>
+        </button>
       </div>
-      <Button
-        variant="matcha"
-        size="lg"
-        className="w-full"
-        disabled={!cart.length}
-        onClick={() => {
-          setMobileTicketOpen(false);
-          setPhase("cobro");
-        }}
-      >
-        Continuar al cobro →
-      </Button>
     </div>
   );
 
-  /* Fila compacta de porcentaje: chips + campo libre, para descuento y propina. */
+  /* Control segmentado: una sola opción activa, como un interruptor múltiple. */
+  const segmented = <T extends string | number>(opts: {
+    items: { value: T; label: ReactNode }[];
+    value: T | null;
+    onChange: (value: T) => void;
+    aria: string;
+  }) => (
+    <div
+      role="group"
+      aria-label={opts.aria}
+      className="flex flex-1 flex-wrap gap-1 rounded-full bg-cream p-1"
+    >
+      {opts.items.map((it) => {
+        const selected = opts.value === it.value;
+        return (
+          <button
+            key={String(it.value)}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => opts.onChange(it.value)}
+            className={cx(
+              "focus-ring flex-1 whitespace-nowrap rounded-full px-3 py-2 text-xs font-extrabold transition",
+              selected
+                ? "bg-white text-ink shadow-card"
+                : "text-muted hover:text-ink",
+            )}
+          >
+            {it.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  /* Fila de porcentaje: segmentado + campo libre (descuento y propina). */
   const pctRow = (opts: {
     label: string;
     chips: { pct: number; text: string }[];
-    active: (pct: number) => boolean;
+    activePct: number | null;
     onChip: (pct: number) => void;
     custom: string;
     onCustom: (text: string) => void;
@@ -523,12 +610,13 @@ export function PosModule() {
   }) => (
     <div>
       <p className="eyebrow">{opts.label}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {opts.chips.map((c) => (
-          <Chip key={c.pct} active={opts.active(c.pct)} onClick={() => opts.onChip(c.pct)}>
-            {c.text}
-          </Chip>
-        ))}
+      <div className="mt-2 flex items-center gap-2">
+        {segmented({
+          items: opts.chips.map((c) => ({ value: c.pct, label: c.text })),
+          value: opts.activePct,
+          onChange: opts.onChip,
+          aria: opts.label,
+        })}
         <Input
           type="text"
           inputMode="decimal"
@@ -540,7 +628,10 @@ export function PosModule() {
             const text = numericText(e.target.value);
             if (text !== null) opts.onCustom(text);
           }}
-          className="!w-24 rounded-full !py-2 text-center"
+          className={cx(
+            "!w-[5.5rem] shrink-0 rounded-full !py-2 text-center",
+            opts.custom !== "" && "border-matcha bg-matcha-mist font-extrabold",
+          )}
         />
       </div>
     </div>
@@ -548,17 +639,17 @@ export function PosModule() {
 
   /* Desglose del ticket final: subtotal, descuento, propina y total. */
   const ticketTotals = (
-    <div className="space-y-1.5 border-t border-line pt-4">
+    <div className="space-y-1.5 border-t-2 border-dashed border-line pt-4">
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted">
           Subtotal · {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
         </span>
-        <span className="font-bold text-ink">{money(subtotal, currency)}</span>
+        <span className="font-bold tabular-nums text-ink">{money(subtotal, currency)}</span>
       </div>
       {discountAmount > 0 ? (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted">Descuento · {discountLabel}</span>
-          <span className="font-bold text-matcha-deep">
+          <span className="text-muted">{discountLabel}</span>
+          <span className="font-bold tabular-nums text-matcha-deep">
             −{money(discountAmount, currency)}
           </span>
         </div>
@@ -566,60 +657,71 @@ export function PosModule() {
       {tip > 0 ? (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted">Propina · {pctLabel(tipPctApplied)}%</span>
-          <span className="font-bold text-ink">+{money(tip, currency)}</span>
+          <span className="font-bold tabular-nums text-ink">+{money(tip, currency)}</span>
         </div>
       ) : null}
-      <div className="flex items-baseline justify-between pt-1">
-        <span className="text-sm font-extrabold text-ink">Total</span>
-        <span className="display text-2xl text-ink">{money(total, currency)}</span>
+      <div className="flex items-baseline justify-between pt-2">
+        <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-ink">
+          Total
+        </span>
+        <span className="display text-3xl tabular-nums text-ink">
+          {money(total, currency)}
+        </span>
       </div>
     </div>
   );
 
+  const change = Math.round((received - total) * 100) / 100;
+
   /*
-   * Pantalla de cobro, al estilo Loyverse: el total en grande arriba y abajo
-   * los controles en filas compactas, con los métodos de pago como botones
-   * grandes para tocarlos rápido en el iPad.
+   * Pantalla de cobro: el total como protagonista, controles segmentados y los
+   * dos métodos de pago como botones grandes para tocarlos sin fallar.
    */
   const payBody = (
     <div className="space-y-5">
-      <div className="rounded-xl2 bg-ink px-5 py-4 text-center text-paper">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-paper/60">
+      <div
+        className="relative overflow-hidden rounded-3xl px-6 py-6 text-center text-paper shadow-lift"
+        style={{
+          background:
+            "radial-gradient(120% 140% at 100% 0%, rgba(122,140,84,0.55), transparent 55%), radial-gradient(90% 120% at 0% 100%, rgba(220,232,192,0.18), transparent 60%), #191a14",
+        }}
+      >
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.25em] text-paper/60">
           Total a cobrar
         </p>
-        <p className="display mt-1 text-5xl leading-none">{money(total, currency)}</p>
+        <p className="display mt-2 text-6xl leading-none tabular-nums">
+          {money(total, currency)}
+        </p>
         {discountAmount > 0 || tip > 0 ? (
-          <p className="mt-2 text-xs text-paper/60">
+          <p className="mt-3 text-xs text-paper/60">
             {discountAmount > 0 ? `Descuento −${money(discountAmount, currency)}` : ""}
             {discountAmount > 0 && tip > 0 ? " · " : ""}
             {tip > 0 ? `Propina +${money(tip, currency)}` : ""}
           </p>
         ) : null}
+        {activePayment === "efectivo" && cashReceived !== "" && cashOk ? (
+          <p className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-matcha-light px-4 py-1.5 text-sm font-extrabold text-ink">
+            Cambio <span className="display text-lg tabular-nums">{money(change, currency)}</span>
+          </p>
+        ) : null}
       </div>
 
-      {/* ------------------------- Aquí o para llevar ------------------------- */}
       <div>
         <p className="eyebrow">¿Dónde se consume?</p>
-        <div className="mt-2 grid grid-cols-2 gap-2" role="group" aria-label="Modo de servicio">
-          {(["aqui", "llevar"] as ServiceMode[]).map((mode) => {
-            const selected = serviceMode === mode;
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setServiceMode(mode)}
-                aria-pressed={selected}
-                className={cx(
-                  "focus-ring flex items-center justify-center gap-2 rounded-xl2 border px-3 py-2.5 text-sm font-extrabold transition",
-                  selected
-                    ? "border-matcha bg-matcha-mist text-ink"
-                    : "border-line bg-white text-muted hover:border-matcha",
-                )}
-              >
-                <span aria-hidden>{SERVICE_META[mode].emoji}</span>
-                {SERVICE_META[mode].label}
-              </button>
-            );
+        <div className="mt-2 flex">
+          {segmented<ServiceMode>({
+            items: (["aqui", "llevar"] as ServiceMode[]).map((mode) => ({
+              value: mode,
+              label: (
+                <span className="inline-flex items-center gap-1.5 text-sm">
+                  <span aria-hidden>{SERVICE_META[mode].emoji}</span>
+                  {SERVICE_META[mode].label}
+                </span>
+              ),
+            })),
+            value: serviceMode,
+            onChange: setServiceMode,
+            aria: "Modo de servicio",
           })}
         </div>
         {state.flags.inventario && packagingCount > 0 ? (
@@ -633,8 +735,8 @@ export function PosModule() {
 
       {pctRow({
         label: "Descuento",
-        chips: PROMOS.map((p) => ({ pct: p.pct, text: p.pct === 0 ? "Sin descuento" : `${p.pct}%` })),
-        active: (pct) => !discountTyped && promoPct === pct,
+        chips: PROMOS.map((p) => ({ pct: p.pct, text: p.pct === 0 ? "Sin" : `${p.pct}%` })),
+        activePct: discountTyped ? null : promoPct,
         onChip: (pct) => {
           setPromoPct(pct);
           setDiscountCustomPct("");
@@ -651,8 +753,8 @@ export function PosModule() {
 
       {pctRow({
         label: "Propina",
-        chips: [{ pct: 0, text: "Sin propina" }, ...TIP_PCTS.map((pct) => ({ pct, text: `${pct}%` }))],
-        active: (pct) => !tipTyped && tipPct === pct,
+        chips: [{ pct: 0, text: "Sin" }, ...TIP_PCTS.map((pct) => ({ pct, text: `${pct}%` }))],
+        activePct: tipTyped ? null : tipPct,
         onChip: (pct) => {
           setTipPct(pct);
           setTipCustomPct("");
@@ -711,7 +813,7 @@ export function PosModule() {
       {/* --------------------------------- Pago ---------------------------------- */}
       <div>
         <p className="eyebrow">Método de pago</p>
-        <div className={cx("mt-2 grid gap-2", paymentOptions.length > 2 ? "grid-cols-3" : "grid-cols-2")}>
+        <div className="mt-2 grid grid-cols-2 gap-3">
           {paymentOptions.map((opt) => {
             const selected = activePayment === opt.id;
             return (
@@ -721,14 +823,21 @@ export function PosModule() {
                 onClick={() => setPayment(opt.id)}
                 aria-pressed={selected}
                 className={cx(
-                  "focus-ring flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl2 border px-2 py-3 text-sm font-extrabold transition",
+                  "focus-ring relative flex min-h-[8.5rem] flex-col items-center justify-center gap-2 rounded-3xl border-2 px-3 py-5 transition motion-reduce:transition-none",
                   selected
-                    ? "border-matcha bg-matcha-mist text-ink ring-2 ring-matcha"
-                    : "border-line bg-white text-ink hover:border-matcha",
+                    ? "border-matcha-deep bg-matcha-deep text-paper shadow-pop"
+                    : "border-line bg-white text-ink hover:-translate-y-0.5 hover:border-matcha hover:shadow-card motion-reduce:hover:translate-y-0",
                 )}
               >
-                <span aria-hidden className="text-2xl">{opt.emoji}</span>
-                {PAYMENT_META[opt.id].label}
+                {selected ? (
+                  <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-matcha-light text-xs font-extrabold text-ink">
+                    ✓
+                  </span>
+                ) : null}
+                <span aria-hidden className="text-5xl leading-none">
+                  {opt.emoji}
+                </span>
+                <span className="display text-xl">{PAYMENT_META[opt.id].label}</span>
               </button>
             );
           })}
@@ -743,12 +852,15 @@ export function PosModule() {
               >
                 Exacto
               </Chip>
-              <Chip active={cashReceived === "200"} onClick={() => setCashReceived("200")}>
-                {money(200, currency)}
-              </Chip>
-              <Chip active={cashReceived === "500"} onClick={() => setCashReceived("500")}>
-                {money(500, currency)}
-              </Chip>
+              {[200, 500, 1000].map((bill) => (
+                <Chip
+                  key={bill}
+                  active={cashReceived === String(bill)}
+                  onClick={() => setCashReceived(String(bill))}
+                >
+                  {money(bill, currency)}
+                </Chip>
+              ))}
               <Input
                 type="text"
                 inputMode="decimal"
@@ -763,30 +875,28 @@ export function PosModule() {
                 className="!w-32 rounded-full !py-2"
               />
             </div>
-            {cart.length && cashReceived !== "" ? (
-              cashOk ? (
-                <p className="text-sm font-extrabold text-matcha-deep">
-                  Cambio: {money(Math.round((received - total) * 100) / 100, currency)}
-                </p>
-              ) : (
-                <p className="text-sm font-extrabold text-danger">
-                  Faltan {money(Math.round((total - received) * 100) / 100, currency)}
-                </p>
-              )
+            {cart.length && cashReceived !== "" && !cashOk ? (
+              <p className="text-sm font-extrabold text-danger">
+                Faltan {money(Math.round((total - received) * 100) / 100, currency)}
+              </p>
             ) : null}
           </div>
         ) : null}
       </div>
 
-      <Button
-        variant="matcha"
-        size="lg"
-        className="w-full py-4 text-base"
+      <button
+        type="button"
         disabled={!canCharge}
         onClick={() => void handleCheckout()}
+        className="focus-ring flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-matcha-deep to-matcha text-lg font-extrabold text-paper shadow-pop transition hover:brightness-110 disabled:cursor-not-allowed disabled:from-line disabled:to-line disabled:text-muted disabled:shadow-none"
       >
-        {busy ? "Cobrando…" : `Cobrar ${money(total, currency)}`}
-      </Button>
+        {busy ? "Cobrando…" : (
+          <>
+            Cobrar
+            <span className="display text-2xl tabular-nums">{money(total, currency)}</span>
+          </>
+        )}
+      </button>
       {cashClosedToday ? (
         <p className="text-center text-xs text-muted">
           La caja de hoy está cerrada. Un administrador debe reabrir el turno en
@@ -864,65 +974,108 @@ export function PosModule() {
       ) : null}
 
       {/* ------------------------------ Fases ------------------------------- */}
-      <ol className="flex flex-wrap items-center gap-2 text-xs font-extrabold" aria-label="Fases del cobro">
+      <nav
+        aria-label="Fases del cobro"
+        className="flex w-full max-w-xl items-center gap-1 rounded-full border border-line bg-white p-1.5 shadow-card"
+      >
         {(
           [
             { id: "orden", n: 1, label: "Orden" },
-            { id: "cobro", n: 2, label: "Ticket final y pago" },
+            { id: "cobro", n: 2, label: "Ticket y pago" },
           ] as const
         ).map((step, i) => {
           const current = phase === step.id;
+          const done = step.id === "orden" && phase === "cobro";
+          const blocked = step.id === "cobro" && !cart.length;
           return (
-            <li key={step.id} className="flex items-center gap-2">
-              {i > 0 ? <span aria-hidden className="text-muted">→</span> : null}
+            <div key={step.id} className="flex flex-1 items-center gap-1">
+              {i > 0 ? (
+                <span
+                  aria-hidden
+                  className={cx(
+                    "h-0.5 w-6 shrink-0 rounded-full transition-colors",
+                    phase === "cobro" ? "bg-matcha" : "bg-line",
+                  )}
+                />
+              ) : null}
               <button
                 type="button"
-                onClick={() => {
-                  if (step.id === "cobro" && !cart.length) return;
-                  setPhase(step.id);
-                }}
-                disabled={step.id === "cobro" && !cart.length}
+                onClick={() => !blocked && setPhase(step.id)}
+                disabled={blocked}
                 aria-current={current ? "step" : undefined}
                 className={cx(
-                  "focus-ring inline-flex items-center gap-2 rounded-full px-4 py-2 transition disabled:opacity-50",
-                  current
-                    ? "bg-ink text-paper"
-                    : "border border-line bg-white text-ink hover:border-matcha",
+                  "focus-ring flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-40",
+                  current ? "bg-ink text-paper shadow-pop" : "text-ink hover:bg-cream",
                 )}
               >
                 <span
                   className={cx(
-                    "flex h-5 w-5 items-center justify-center rounded-full text-[10px]",
-                    current ? "bg-matcha-light text-ink" : "bg-cream text-muted",
+                    "flex h-6 w-6 items-center justify-center rounded-full text-[11px]",
+                    current
+                      ? "bg-matcha-light text-ink"
+                      : done
+                        ? "bg-matcha text-paper"
+                        : "bg-cream text-muted",
                   )}
                 >
-                  {step.n}
+                  {done ? "✓" : step.n}
                 </span>
                 {step.label}
               </button>
-            </li>
+            </div>
           );
         })}
-      </ol>
+      </nav>
 
       {phase === "cobro" ? (
         /* ----------------------- Fase 2: ticket final y pago ----------------------- */
-        <div className="gap-5 space-y-5 md:grid md:grid-cols-[1fr_minmax(340px,440px)] md:space-y-0">
+        <div className="animate-rise gap-6 space-y-6 md:grid md:grid-cols-[minmax(0,1fr)_minmax(360px,460px)] md:space-y-0 motion-reduce:animate-none">
+          {/* Recibo: papel blanco con borde de corte en zigzag abajo. */}
           <div className="min-w-0 self-start md:sticky md:top-24">
-            <Card>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="display text-2xl text-ink">Ticket final</h2>
-                <Button variant="ghost" onClick={() => setPhase("orden")}>
+            <div className="rounded-t-3xl bg-white px-6 pb-4 pt-6 shadow-lift">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-matcha-deep">
+                    {state.settings.businessName}
+                  </p>
+                  <h2 className="display mt-1 text-3xl text-ink">Ticket final</h2>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {new Date().toLocaleString("es-MX", {
+                      timeZone: state.settings.timezone,
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}{" "}
+                    · {SERVICE_META[serviceMode].emoji} {SERVICE_META[serviceMode].label}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPhase("orden")}
+                  className="focus-ring shrink-0 rounded-full border border-line bg-white px-4 py-2 text-xs font-extrabold text-ink transition hover:border-matcha hover:text-matcha-deep"
+                >
                   ← Editar orden
-                </Button>
+                </button>
               </div>
-              {cartList(false)}
-              <div className="mt-4">{ticketTotals}</div>
-            </Card>
+              <div className="mt-4 border-t-2 border-dashed border-line">
+                {cartList(false)}
+              </div>
+              <div className="mt-2">{ticketTotals}</div>
+              <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-muted/70">
+                ¡Gracias por tu visita!
+              </p>
+            </div>
+            <div
+              aria-hidden
+              className="h-3 drop-shadow-[0_8px_8px_rgba(25,26,20,0.08)]"
+              style={{
+                background:
+                  "linear-gradient(135deg, #fff 6px, transparent 0) 0 0 / 12px 12px repeat-x, linear-gradient(225deg, #fff 6px, transparent 0) 0 0 / 12px 12px repeat-x",
+              }}
+            />
           </div>
-          <Card className="self-start">
+          <div className="self-start rounded-3xl border border-line bg-white p-5 shadow-card md:p-6">
             {payBody}
-          </Card>
+          </div>
         </div>
       ) : (
         <>
@@ -972,43 +1125,70 @@ export function PosModule() {
 
           {visibleProducts.length ? (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {visibleProducts.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => openProduct(p)}
-                  className="card focus-ring flex flex-col gap-2.5 p-3 text-left transition hover:border-matcha"
-                >
-                  <span className="flex w-full items-start justify-between gap-2">
-                    <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl2 bg-matcha-mist text-3xl">
+              {visibleProducts.map((p) => {
+                // Cuántas piezas de este producto van ya en la orden.
+                const inOrder = cart
+                  .filter((l) => l.productId === p.id)
+                  .reduce((n, l) => n + l.qty, 0);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => openProduct(p)}
+                    className={cx(
+                      "card focus-ring group relative flex flex-col gap-3 p-3 text-left transition hover:-translate-y-0.5 hover:border-matcha hover:shadow-lift motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+                      inOrder > 0 && "border-matcha ring-2 ring-matcha/25",
+                    )}
+                  >
+                    {inOrder > 0 ? (
+                      <span className="absolute -right-2 -top-2 z-10 flex h-7 min-w-7 items-center justify-center rounded-full bg-matcha-deep px-2 text-xs font-extrabold text-paper shadow-pop">
+                        {inOrder}
+                      </span>
+                    ) : null}
+                    <span className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl2 bg-gradient-to-br from-matcha-mist to-cream text-5xl">
                       <MediaImage
                         objectKey={p.imageKey}
                         alt=""
-                        className="h-full w-full object-cover"
-                        fallback={<span aria-hidden>{p.emoji}</span>}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none"
+                        fallback={
+                          <span
+                            aria-hidden
+                            className="transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none"
+                          >
+                            {p.emoji}
+                          </span>
+                        }
                       />
+                      {p.popular ? (
+                        <span className="absolute left-2 top-2 rounded-full bg-ink/85 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] text-paper">
+                          ★ Popular
+                        </span>
+                      ) : null}
                     </span>
-                    {p.popular ? (
-                      <Badge tone="matcha" className="shrink-0">
-                        Popular
-                      </Badge>
-                    ) : null}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-extrabold leading-snug text-ink">
-                      {p.name}
-                    </span>
-                    <span className="display block text-lg text-matcha-deep">
-                      {money(p.price, currency)}
-                    </span>
-                    {p.desc ? (
-                      <span className="block truncate text-xs text-muted">
-                        {p.desc}
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="block text-sm font-extrabold leading-snug text-ink">
+                        {p.name}
                       </span>
-                    ) : null}
-                  </span>
-                </button>
-              ))}
+                      {p.desc ? (
+                        <span className="mt-0.5 block truncate text-xs text-muted">
+                          {p.desc}
+                        </span>
+                      ) : null}
+                      <span className="mt-2 flex items-center justify-between gap-2">
+                        <span className="display text-lg text-matcha-deep">
+                          {money(p.price, currency)}
+                        </span>
+                        <span
+                          aria-hidden
+                          className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-sm font-extrabold text-paper transition group-hover:bg-matcha-deep"
+                        >
+                          +
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <p className="rounded-xl2 border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
@@ -1019,10 +1199,25 @@ export function PosModule() {
 
         {/* --------------------------- Ticket (escritorio) ------------------------- */}
         <div className="hidden self-start md:sticky md:top-24 md:block">
-          <Card className="scrollbar-slim max-h-[calc(100dvh-8rem)] overflow-y-auto">
-            <h2 className="display mb-4 text-2xl text-ink">Orden</h2>
+          <div className="scrollbar-slim max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-3xl border border-line bg-white p-4 shadow-card">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h2 className="display text-2xl text-ink">Orden</h2>
+              <div className="flex items-center gap-2">
+                {cart.length ? (
+                  <ConfirmButton
+                    label="Vaciar"
+                    confirmLabel="Sí, vaciar"
+                    variant="ghost"
+                    onConfirm={() => setCart([])}
+                  />
+                ) : null}
+                <span className="rounded-full bg-matcha-mist px-2.5 py-1 text-[11px] font-extrabold text-matcha-deep">
+                  {itemCount} {itemCount === 1 ? "artículo" : "artículos"}
+                </span>
+              </div>
+            </div>
             {orderBody}
-          </Card>
+          </div>
         </div>
       </div>
 

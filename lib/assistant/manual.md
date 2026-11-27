@@ -142,7 +142,7 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 - Cabecera: «Caja abierta» o «Caja cerrada» y el título «Punto de venta».
 - A la izquierda el catálogo: buscador «Buscar producto…» (busca en el nombre y en la descripción) y chips de categoría: «Todos» y las categorías del menú (solo aparecen las categorías activas que tienen algún producto activo).
 - El cobro va en **dos fases**, marcadas arriba: **1 Orden** y **2 Ticket final y pago**. Se puede volver de la 2 a la 1 con «← Editar orden» o tocando «1 Orden».
-- En la fase 1 la **Orden** está fija a la derecha (computadora y tablet) con cada producto, su precio y el subtotal; si es larga se desplaza dentro de su recuadro. En celular la orden se abre desde la barra inferior «🧾 Orden · N artículos».
+- En la fase 1 la **Orden** está fija a la derecha (computadora y tablet) con cada producto, su precio y el subtotal; si es larga se desplaza dentro de su recuadro. Arriba de la orden está «Vaciar» (pide confirmar con «Sí, vaciar») y cuántos artículos lleva. En el catálogo, los productos que ya están en la orden se marcan con un borde verde y un número con las piezas. En celular la orden se abre desde la barra inferior «🧾 Orden · N artículos».
 - Solo se muestran los productos activos. Si la carta está vacía aparece «La carta está vacía»: el administrador debe crear productos en Productos o cargar el catálogo sugerido desde Ajustes; el empleado debe pedírselo a un administrador.
 - Si el corte de hoy ya se hizo aparece «Ventas en pausa: el corte de hoy ya se registró» (con «Ir a Corte de caja» para el administrador) y el botón de cobrar queda bloqueado.
 
@@ -165,8 +165,8 @@ Es la pantalla de entrada. Arriba está siempre el **manual integrado** («Instr
 1. **¿Dónde se consume?** Elige «Para aquí» o «Para llevar». Ver 5.4: no es un detalle estético.
 2. **Descuento** (opcional): «Sin descuento», «10%» o «15%», o escribe cualquier porcentaje en «Otro %». Lo escrito manda sobre los botones; al tocar un botón el campo se vacía. Si pasa de 100 % se aplica 100 % y lo avisa. En el ticket el 10 % se registra como «Descuento 10%» y el 15 % como «Cliente frecuente 15%».
 3. **Propina**: «Sin propina» (viene así por omisión), 10 %, 15 %, 20 %, o escribe otro porcentaje en «Otro %».
-4. **Método de pago**: botones grandes «Efectivo», «Tarjeta» y, solo si el módulo está encendido en Ajustes, «Mercado Pago».
-5. Si es **Efectivo**: escribe en «Recibido» lo que entregó el cliente, o toca «Exacto», «$200» o «$500». El sistema muestra «Cambio: $X». Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
+4. **Método de pago**: dos botones grandes, «Efectivo» y «Tarjeta». Mercado Pago ya no se ofrece en la caja (las ventas viejas con ese método siguen en reportes y cortes).
+5. Si es **Efectivo**: escribe en «Recibido» lo que entregó el cliente, o toca «Exacto», «$200», «$500» o «$1,000». El cambio aparece en grande dentro del recuadro del total. Si lo recibido es menor que el total muestra «Faltan $X» en rojo y **no deja cobrar**.
 6. Pulsa **«Cobrar $X»**. Aparece «Cobro completado» con «Venta #N registrada» y el total, con los botones «Nueva venta» y «Ver comanda». La caja vuelve sola a la fase 1.
 
 ### 5.3 Cómo se calcula el total
@@ -348,7 +348,7 @@ Botón «Subir logo» / «Cambiar logo» y «Quitar» (sin confirmación). Máxi
 Se aplican al instante al tocarlos (no hay botón de guardar) y **cambian el comportamiento real** del sistema, no solo lo que se ve. Aviso: «Módulo actualizado».
 - **Inventario de insumos**: apagado, las ventas dejan de descontar existencias; el módulo Inventario muestra «Inventario está desactivado»; Inicio oculta las alertas de insumos; el POS deja de recordar el empaque.
 - **Reseñas de Google**: muestra u oculta la tarjeta de calificación en Inicio.
-- **Pagos con Mercado Pago**: agrega o quita ese método en la caja. El registro es manual: el sistema no procesa el pago, solo lo contabiliza.
+- **Pagos con Mercado Pago**: hoy no cambia la caja, que solo ofrece Efectivo y Tarjeta. Se conserva para las ventas viejas registradas con ese método.
 - (El módulo «Lealtad y clientes» existe pero está oculto en la versión actual; ver sección 15.)
 
 Ojo: apagar Inventario no borra nada; las ventas hechas con el módulo apagado simplemente no descontaron insumos, y al encenderlo de nuevo no se recalculan. Piénsalo antes de mover un interruptor a media operación.
@@ -838,7 +838,7 @@ Solo administradores: Inicio, tarjeta «Venta de hoy» (incluye propina), o Cort
 
 **¿Se puede pagar mitad efectivo y mitad tarjeta?** No; cada ticket lleva un solo método de pago.
 
-**¿Por qué no aparece Mercado Pago como opción?** El módulo está apagado en Ajustes (administrador).
+**¿Por qué no aparece Mercado Pago como opción?** La caja solo ofrece Efectivo y Tarjeta por decisión del negocio. Si hace falta de nuevo, pídeselo a quien administra el sistema.
 
 **¿Qué pasa si vendo algo sin inventario?** Se vende igual y la existencia queda en negativo, en rojo, para avisar que hay que contar.
 
